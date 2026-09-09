@@ -250,7 +250,10 @@
             <input class="name-input" type="text" maxlength="30" value="${escapeHtml(timer.name)}" aria-label="타이머 이름" />
           </label>
           <div class="duration-setting">
-            <span class="control-label">시간</span>
+            <div class="duration-setting-header">
+              <span class="control-label">시간</span>
+              <span class="duration-hint">마우스 휠로 조절 가능</span>
+            </div>
             <div class="duration-fields" aria-label="타이머 ${timer.id} 시간 입력">
               <input class="duration-input minutes-input" type="text" inputmode="numeric" pattern="[0-9]*" value="${Math.floor(timer.totalSeconds / 60)}" aria-label="타이머 ${timer.id} 분" />
               <span class="duration-separator" aria-hidden="true">:</span>
@@ -343,15 +346,22 @@
         localStorage.setItem(`meso-watch-timer-${timer.id}-name`, timer.name);
         element.querySelector(".timer-label").textContent = timer.name;
       });
+      const durationInputMax = (input) => (input.classList.contains("seconds-input") ? 59 : 60);
       element.querySelectorAll(".duration-input").forEach((input) => input.addEventListener("input", (event) => {
         event.target.value = event.target.value.replace(/\D/g, "");
-        if (Number(event.target.value) > 60) event.target.value = "0";
+        if (Number(event.target.value) > durationInputMax(event.target)) event.target.value = "0";
       }));
+      element.querySelectorAll(".duration-input").forEach((input) => input.addEventListener("wheel", (event) => {
+        event.preventDefault();
+        const delta = event.deltaY < 0 ? 1 : -1;
+        input.value = Math.min(durationInputMax(input), Math.max(0, (Number(input.value) || 0) + delta));
+        input.dispatchEvent(new Event("change"));
+      }, { passive: false }));
       element.querySelectorAll(".duration-input").forEach((input) => input.addEventListener("change", () => {
         const minutesInput = element.querySelector(".minutes-input");
         const secondsInput = element.querySelector(".seconds-input");
         const minutes = Math.min(60, Math.max(0, Number(minutesInput.value) || 0));
-        const seconds = Math.min(60, Math.max(0, Number(secondsInput.value) || 0));
+        const seconds = Math.min(59, Math.max(0, Number(secondsInput.value) || 0));
         const totalSeconds = minutes * 60 + seconds;
         if (totalSeconds === 0) {
           minutesInput.value = 0;

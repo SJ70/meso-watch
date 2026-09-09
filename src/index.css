@@ -527,6 +527,19 @@ button:disabled {
   margin-bottom: 0;
 }
 
+.duration-setting-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.duration-hint {
+  color: var(--muted);
+  opacity: 0.6;
+  font: 400 0.68rem sans-serif;
+}
+
 .duration-setting .duration-fields {
   margin-bottom: 0;
 }
