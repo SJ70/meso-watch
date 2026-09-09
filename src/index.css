@@ -22,10 +22,57 @@ header {
   margin-bottom: 24px;
 }
 
+.header-actions {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 12px;
+}
+
 .add-timer {
   flex: 0 0 auto;
   padding: 12px 16px;
   font-size: 0.82rem;
+}
+
+.volume-control {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+}
+
+.volume-toggle {
+  padding: 4px;
+  color: var(--ink);
+  background: transparent;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.volume-toggle:hover,
+.volume-toggle:focus-visible {
+  transform: none;
+  color: var(--accent);
+}
+
+.volume-slider {
+  width: 0;
+  margin-left: 0;
+  opacity: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+  pointer-events: none;
+  transition: width 160ms ease, opacity 160ms ease, margin-left 160ms ease;
+}
+
+.volume-control.is-open .volume-slider {
+  width: 90px;
+  margin-left: 8px;
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .title-row {

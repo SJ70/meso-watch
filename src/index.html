@@ -16,14 +16,81 @@
           <p class="subtitle">메이플스토리 재획 타이머</p>
         </div>
       </div>
-      <button class="primary add-timer" id="addTimerButton" type="button">+ 타이머 추가</button>
+      <div class="header-actions">
+        <div class="volume-control" id="volumeControl">
+          <button class="volume-toggle" id="volumeToggleButton" type="button" aria-label="음량 조절 열기"></button>
+          <input class="volume-slider" id="volumeSlider" type="range" min="0" max="100" step="1" aria-label="알림 음량" />
+        </div>
+        <button class="primary add-timer" id="addTimerButton" type="button">+ 타이머 추가</button>
+      </div>
     </header>
     <section class="timer-list" id="timerList" aria-label="등록된 타이머"></section>
   </main>
 
-  <script>
+  <script type="module">
+    import createIconElement from "../node_modules/lucide/dist/esm/createElement.mjs";
+    import Volume1Icon from "../node_modules/lucide/dist/esm/icons/volume-1.mjs";
+    import Volume2Icon from "../node_modules/lucide/dist/esm/icons/volume-2.mjs";
+    import VolumeXIcon from "../node_modules/lucide/dist/esm/icons/volume-x.mjs";
+
     const timerList = document.getElementById("timerList");
     const addTimerButton = document.getElementById("addTimerButton");
+    const volumeControl = document.getElementById("volumeControl");
+    const volumeSlider = document.getElementById("volumeSlider");
+    const volumeToggleButton = document.getElementById("volumeToggleButton");
+
+    function loadVolume() {
+      const stored = Number(localStorage.getItem("meso-watch-volume"));
+      return Number.isFinite(stored) && stored >= 0 && stored <= 100 ? stored : 50;
+    }
+
+    let volume = loadVolume();
+    let lastNonZeroVolume = volume || 50;
+
+    const volumeIcons = {
+      "volume-x": VolumeXIcon,
+      "volume-1": Volume1Icon,
+      "volume-2": Volume2Icon
+    };
+
+    function volumeIconName(level) {
+      if (level === 0) return "volume-x";
+      if (level <= 50) return "volume-1";
+      return "volume-2";
+    }
+
+    function updateVolumeUi() {
+      volumeSlider.value = volume;
+      volumeToggleButton.replaceChildren(createIconElement(volumeIcons[volumeIconName(volume)], { width: 18, height: 18 }));
+      volumeToggleButton.setAttribute("aria-label", volumeControl.classList.contains("is-open") ? "음량 조절 닫기" : "음량 조절 열기");
+    }
+
+    function setVolume(value) {
+      volume = Math.min(100, Math.max(0, value));
+      if (volume > 0) lastNonZeroVolume = volume;
+      localStorage.setItem("meso-watch-volume", String(volume));
+      updateVolumeUi();
+    }
+
+    function setVolumePopoverOpen(open) {
+      volumeControl.classList.toggle("is-open", open);
+      updateVolumeUi();
+    }
+
+    volumeSlider.addEventListener("input", (event) => setVolume(Number(event.target.value)));
+    volumeSlider.addEventListener("change", () => playNotifySound(volume));
+    volumeToggleButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      setVolumePopoverOpen(!volumeControl.classList.contains("is-open"));
+    });
+    document.addEventListener("click", (event) => {
+      if (!volumeControl.classList.contains("is-open")) return;
+      if (!volumeControl.contains(event.target)) setVolumePopoverOpen(false);
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && volumeControl.classList.contains("is-open")) setVolumePopoverOpen(false);
+    });
+    updateVolumeUi();
 
     function loadNextTimerId() {
       let maxUsedId = 0;
@@ -305,18 +372,23 @@
       timers.forEach(renderTimer);
     }
 
-    function notifyDone() {
-      if (typeof AudioContext === "undefined") return;
+    function playNotifySound(level) {
+      if (typeof AudioContext === "undefined" || level === 0) return;
       const audioContext = new AudioContext();
       const oscillator = audioContext.createOscillator();
       const gain = audioContext.createGain();
       oscillator.connect(gain);
       gain.connect(audioContext.destination);
       oscillator.frequency.value = 660;
-      gain.gain.setValueAtTime(0.08, audioContext.currentTime);
+      const peakGain = 0.16 * (level / 100);
+      gain.gain.setValueAtTime(peakGain, audioContext.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.5);
       oscillator.start();
       oscillator.stop(audioContext.currentTime + 0.5);
+    }
+
+    function notifyDone() {
+      playNotifySound(volume);
     }
 
     function tickTimer(timer) {
