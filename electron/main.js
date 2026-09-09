@@ -14,13 +14,16 @@ function createWindow() {
     minWidth: 360,
     minHeight: 480,
     resizable: true,
-    alwaysOnTop: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
     },
   });
+
+  mainWindow.setAlwaysOnTop(true, "screen-saver");
+  mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  mainWindow.on("blur", () => mainWindow.setAlwaysOnTop(true, "screen-saver"));
 
   mainWindow.removeMenu();
   mainWindow.loadFile(path.join(__dirname, "..", "src", "index.html"));
