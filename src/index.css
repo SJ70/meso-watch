@@ -332,6 +332,11 @@ h1 {
   border-radius: 8px;
 }
 
+.duration-fields:focus-within {
+  border-color: var(--accent);
+  outline: 3px solid rgba(232, 93, 63, 0.2);
+}
+
 .duration-separator {
   color: var(--muted);
   font: 800 3rem/1 serif;
@@ -463,6 +468,12 @@ button:disabled {
   background: transparent;
   border: 1px solid var(--line);
   font: 700 0.82rem sans-serif;
+}
+
+.secondary:hover,
+.secondary:focus-visible {
+  color: var(--ink);
+  background: #303b47;
 }
 
 .timer-actions {
