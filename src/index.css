@@ -211,7 +211,7 @@ h1 {
   display: block;
   margin-bottom: 24px;
   color: var(--ink);
-  font: 700 0.9rem sans-serif;
+  font: 700 1.15rem sans-serif;
 }
 
 .settings-modal {
@@ -249,13 +249,13 @@ h1 {
 .settings-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 12px;
   margin-top: 28px;
 }
 
 .settings-actions button {
   padding: 17px 20px;
-  font-size: 0.82rem;
+  font-size: 1rem;
 }
 
 .timer-list {
