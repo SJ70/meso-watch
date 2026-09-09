@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>메소워치</title>
+  <link rel="stylesheet" href="color.css" />
+  <link rel="stylesheet" href="index.css" />
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>메소워치</h1>
+        <p class="subtitle">메이플스토리 재획 타이머</p>
+      </div>
+    </header>
+
+    <section class="timer-card" aria-label="PIP 타이머">
+      <span class="sr-only" id="time">01:00</span>
+
+      <div class="controls">
+        <span class="control-label">시간 선택</span>
+        <div class="presets" role="group" aria-label="타이머 시간 선택">
+          <button class="preset active" data-minutes="1" type="button">1분</button>
+          <button class="preset" data-minutes="2" type="button">2분</button>
+          <button class="preset" data-minutes="30" type="button">30분</button>
+        </div>
+        <div class="actions">
+          <button class="primary" id="pipButton" type="button">시작하기</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="pip.js"></script>
+  <script>
+    const timeElement = document.getElementById("time");
+    const presetButtons = document.querySelectorAll(".preset");
+
+    let totalSeconds = 1 * 60;
+    let remainingSeconds = totalSeconds;
+    let timerId = null;
+
+    function render() {
+      const minutes = Math.floor(remainingSeconds / 60).toString().padStart(2, "0");
+      const seconds = (remainingSeconds % 60).toString().padStart(2, "0");
+
+      timeElement.textContent = `${minutes}:${seconds}`;
+      window.pipController.draw(`${minutes}:${seconds}`);
+      document.title = "메소워치";
+    }
+
+    function notifyDone() {
+      if (typeof AudioContext !== "undefined") {
+        const audioContext = new AudioContext();
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+        oscillator.connect(gain);
+        gain.connect(audioContext.destination);
+        oscillator.frequency.value = 660;
+        gain.gain.setValueAtTime(0.08, audioContext.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.5);
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.5);
+      }
+    }
+
+    function tick() {
+      if (remainingSeconds <= 1) {
+        clearInterval(timerId);
+        timerId = null;
+        remainingSeconds = 0;
+        notifyDone();
+        render();
+        return;
+      }
+      remainingSeconds -= 1;
+      render();
+    }
+
+    document.getElementById("pipButton").addEventListener("click", async () => {
+      const isOpen = await window.pipController.toggle();
+      if (isOpen === true) {
+        if (remainingSeconds === 0) remainingSeconds = totalSeconds;
+        timerId = setInterval(tick, 1000);
+      } else if (isOpen === false) {
+        clearInterval(timerId);
+        timerId = null;
+      }
+      render();
+    });
+
+    window.addEventListener("pipclosed", () => {
+      clearInterval(timerId);
+      timerId = null;
+      render();
+    });
+
+    presetButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        presetButtons.forEach((item) => item.classList.remove("active"));
+        button.classList.add("active");
+        clearInterval(timerId);
+        timerId = null;
+        totalSeconds = Number(button.dataset.minutes) * 60;
+        remainingSeconds = totalSeconds;
+        render();
+      });
+    });
+
+    render();
+  </script>
+</body>
+</html>

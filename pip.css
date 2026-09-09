@@ -1,0 +1,49 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --ink: #f4f7fb;
+  --muted: #a7adb5;
+  --paper: #1a222c;
+  --card: #242d38;
+  --accent: #e85d3f;
+}
+
+html,
+body {
+  min-width: 100%;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--paper);
+  font-family: "Trebuchet MS", Arial, sans-serif;
+}
+
+.pip-surface {
+  display: grid;
+  min-height: 100vh;
+  padding: 24px;
+  place-content: center;
+  background: var(--card);
+  text-align: center;
+}
+
+.pip-label {
+  margin: 0 0 18px;
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.pip-time {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(4rem, 18vw, 6.5rem);
+  font-weight: 800;
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+}
