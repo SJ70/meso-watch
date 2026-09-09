@@ -133,6 +133,7 @@
       }
       element.querySelector(".timer-shortcut-badge").textContent = formatShortcut(timer.shortcut);
       element.classList.toggle("is-running", Boolean(timer.timerId));
+      element.classList.toggle("is-finished", Boolean(timer.isFinished));
       const progress = timer.totalSeconds > 0 ? (timer.remainingSeconds / timer.totalSeconds) * 100 : 0;
       element.style.setProperty("--progress", `${progress}%`);
       element.querySelector(".start-button").disabled = Boolean(timer.timerId);
@@ -322,6 +323,7 @@
       if (timer.remainingSeconds <= 1) {
         stopTimer(timer);
         timer.remainingSeconds = 0;
+        timer.isFinished = true;
         updateTimerElement(timer);
         notifyDone();
         return;
@@ -332,6 +334,7 @@
 
     function startTimer(timer) {
       if (timer.timerId || timer.remainingSeconds === 0) return;
+      timer.isFinished = false;
       timer.timerId = setInterval(() => tickTimer(timer), 1000);
       updateTimerElement(timer);
     }
@@ -345,12 +348,14 @@
     function resetTimer(timer) {
       stopTimer(timer);
       timer.remainingSeconds = timer.totalSeconds;
+      timer.isFinished = false;
       updateTimerElement(timer);
     }
 
     function restartTimer(timer) {
       stopTimer(timer);
       timer.remainingSeconds = timer.totalSeconds;
+      timer.isFinished = false;
       startTimer(timer);
       updateTimerElement(timer);
     }
