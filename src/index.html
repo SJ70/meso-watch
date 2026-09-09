@@ -10,226 +10,304 @@
 <body>
   <main>
     <header>
-      <div>
-        <div class="title-row">
-          <div>
-            <h1>메소워치</h1>
-            <p class="subtitle">메이플스토리 재획 타이머</p>
-          </div>
+      <div class="title-row">
+        <div>
+          <h1>메소워치</h1>
+          <p class="subtitle">메이플스토리 재획 타이머</p>
         </div>
       </div>
+      <button class="primary add-timer" id="addTimerButton" type="button">+ 타이머 추가</button>
     </header>
-
-    <section class="timer-card" aria-label="타이머">
-      <div class="timer-display">
-        <span class="control-label">남은 시간</span>
-        <strong id="time">01:00</strong>
-      </div>
-
-      <div class="controls">
-        <span class="control-label">시간 선택</span>
-        <div class="presets" role="group" aria-label="타이머 시간 선택">
-          <button class="preset active" data-minutes="1" type="button">1분</button>
-          <button class="preset" data-minutes="2" type="button">2분</button>
-          <button class="preset" data-minutes="30" type="button">30분</button>
-        </div>
-        <div class="shortcut-setting">
-          <span class="control-label">재시작 단축키</span>
-          <button class="shortcut-input" id="shortcutButton" type="button" aria-label="재시작 단축키 설정">R</button>
-          <span class="shortcut-hint" id="shortcutHint">버튼을 누른 뒤 원하는 키를 입력하세요.</span>
-        </div>
-        <div class="actions">
-          <button class="primary" id="startButton" type="button">시작하기</button>
-          <div class="timer-actions">
-            <button class="secondary" id="pauseButton" type="button">일시정지</button>
-            <button class="secondary" id="resetButton" type="button">초기화</button>
-            <button class="secondary" id="restartButton" type="button">재시작</button>
-          </div>
-        </div>
-      </div>
-    </section>
+    <section class="timer-list" id="timerList" aria-label="등록된 타이머"></section>
   </main>
 
   <script>
-    const timeElement = document.getElementById("time");
-    const presetButtons = document.querySelectorAll(".preset");
-    const shortcutButton = document.getElementById("shortcutButton");
-    const shortcutHint = document.getElementById("shortcutHint");
-    const startButton = document.getElementById("startButton");
-    const pauseButton = document.getElementById("pauseButton");
-    const resetButton = document.getElementById("resetButton");
-    const restartButton = document.getElementById("restartButton");
-    const shortcutStorageKey = "meso-watch-restart-shortcut";
+    const timerList = document.getElementById("timerList");
+    const addTimerButton = document.getElementById("addTimerButton");
+    let nextTimerId = 1;
+    let timers = [];
+    let isSettingShortcutFor = null;
 
-    let totalSeconds = 1 * 60;
-    let remainingSeconds = totalSeconds;
-    let timerId = null;
-    let isSettingShortcut = false;
-    let restartShortcut = loadShortcut();
+    function defaultShortcut(timerId) {
+      const number = Math.min(timerId, 12);
+      return { key: `f${number}`, code: `F${number}`, ctrlKey: false, altKey: false, shiftKey: false, metaKey: false };
+    }
 
-    function loadShortcut() {
+    function loadShortcut(timerId) {
       try {
-        const savedShortcut = JSON.parse(localStorage.getItem(shortcutStorageKey));
-        if (savedShortcut && savedShortcut.key && savedShortcut.code) return savedShortcut;
+        const saved = JSON.parse(localStorage.getItem(`meso-watch-timer-${timerId}-shortcut`));
+        if (saved && saved.key && saved.code) return saved;
       } catch (error) {
-        localStorage.removeItem(shortcutStorageKey);
+        localStorage.removeItem(`meso-watch-timer-${timerId}-shortcut`);
       }
-      return { key: "r", code: "KeyR", ctrlKey: false, altKey: false, shiftKey: false, metaKey: false };
+      return defaultShortcut(timerId);
+    }
+
+    function saveShortcuts() {
+      timers.forEach((timer) => localStorage.setItem(`meso-watch-timer-${timer.id}-shortcut`, JSON.stringify(timer.shortcut)));
+      window.electronAPI?.setGlobalShortcuts(timers.map((timer) => ({ id: timer.id, shortcut: timer.shortcut })));
     }
 
     function formatShortcut(shortcut) {
-      const standaloneModifierNames = {
+      const standaloneModifiers = {
         control: "Ctrl",
-        shift: "Shift",
+        ctrl: "Ctrl",
         alt: "Alt",
-        meta: "Meta"
+        shift: "Shift",
+        meta: "Meta",
+        command: "Meta",
+        win: "Meta"
       };
-      const standaloneModifier = standaloneModifierNames[shortcut.key];
+      const standaloneModifier = standaloneModifiers[shortcut.key];
       if (standaloneModifier) return standaloneModifier;
+
+      if (shortcut.key === " " || shortcut.key === "space" || shortcut.key === "spacebar") return "Spacebar";
 
       const modifiers = [];
       if (shortcut.ctrlKey) modifiers.push("Ctrl");
       if (shortcut.altKey) modifiers.push("Alt");
       if (shortcut.shiftKey) modifiers.push("Shift");
       if (shortcut.metaKey) modifiers.push("Meta");
-      const key = shortcut.key.length === 1 ? shortcut.key.toUpperCase() : shortcut.key;
-      return [...modifiers, key].join(" + ");
+      return [...modifiers, shortcut.key.toUpperCase()].join(" + ");
     }
 
-    function updateShortcutDisplay() {
-      const shortcutLabel = formatShortcut(restartShortcut);
-      shortcutButton.textContent = shortcutLabel;
+    function formatTime(seconds) {
+      const minutes = Math.floor(seconds / 60).toString().padStart(2, "0");
+      const remainingSeconds = (seconds % 60).toString().padStart(2, "0");
+      return `${minutes}:${remainingSeconds}`;
     }
 
-    function matchesShortcut(event) {
-      return event.key.toLowerCase() === restartShortcut.key
-        && event.ctrlKey === restartShortcut.ctrlKey
-        && event.altKey === restartShortcut.altKey
-        && event.shiftKey === restartShortcut.shiftKey
-        && event.metaKey === restartShortcut.metaKey;
+    function escapeHtml(value) {
+      return value.replace(/[&<>'"]/g, (character) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "'": "&#39;",
+        "\"": "&quot;"
+      }[character]));
     }
 
-    function render() {
-      const minutes = Math.floor(remainingSeconds / 60).toString().padStart(2, "0");
-      const seconds = (remainingSeconds % 60).toString().padStart(2, "0");
+    function createTimer(minutes = 30) {
+      const id = nextTimerId++;
+      const totalSeconds = minutes * 60;
+      const name = localStorage.getItem(`meso-watch-timer-${id}-name`) || `타이머 ${id}`;
+      return { id, name, totalSeconds, remainingSeconds: totalSeconds, timerId: null, shortcut: loadShortcut(id) };
+    }
 
-      timeElement.textContent = `${minutes}:${seconds}`;
-      document.title = "메소워치";
+    function getTimerElement(timer) {
+      return timerList.querySelector(`[data-timer-id="${timer.id}"]`);
+    }
+
+    function updateTimerElement(timer) {
+      const element = getTimerElement(timer);
+      if (!element) return;
+      element.querySelector(".timer-time").textContent = formatTime(timer.remainingSeconds);
+      element.querySelector(".timer-shortcut").textContent = formatShortcut(timer.shortcut);
+      element.querySelector(".timer-shortcut-badge").textContent = formatShortcut(timer.shortcut);
+      element.querySelector(".start-button").disabled = Boolean(timer.timerId);
+      element.querySelector(".pause-button").disabled = !timer.timerId;
+    }
+
+    function renderTimer(timer) {
+      const element = document.createElement("article");
+      element.className = "timer-card";
+      element.dataset.timerId = timer.id;
+      element.innerHTML = `
+        <div class="timer-card-header">
+          <span class="timer-shortcut-badge">${formatShortcut(timer.shortcut)}</span>
+          <span class="timer-label">${escapeHtml(timer.name)}</span>
+          <button class="settings-toggle" type="button">설정</button>
+          <button class="remove-button" type="button" aria-label="타이머 ${timer.id} 삭제">삭제</button>
+        </div>
+        <section class="timer-progress" aria-label="타이머 진행">
+          <div class="timer-display">
+            <strong class="timer-time">${formatTime(timer.remainingSeconds)}</strong>
+          </div>
+          <div class="actions">
+            <button class="primary start-button" type="button">시작하기</button>
+            <div class="timer-actions">
+              <button class="secondary pause-button" type="button">일시정지</button>
+              <button class="secondary reset-button" type="button">초기화</button>
+              <button class="secondary restart-button" type="button">재시작</button>
+            </div>
+          </div>
+        </section>
+        <dialog class="settings-modal" aria-label="타이머 설정">
+          <div class="settings-modal-header">
+            <span class="section-title">타이머 설정</span>
+          </div>
+          <label class="name-field">
+            <span class="control-label">타이머 이름</span>
+            <input class="name-input" type="text" maxlength="30" value="${escapeHtml(timer.name)}" aria-label="타이머 이름" />
+          </label>
+          <div class="duration-fields" aria-label="타이머 ${timer.id} 시간 입력">
+            <input class="duration-input minutes-input" type="text" inputmode="numeric" pattern="[0-9]*" value="${Math.floor(timer.totalSeconds / 60)}" aria-label="타이머 ${timer.id} 분" />
+            <span class="duration-separator" aria-hidden="true">:</span>
+            <input class="duration-input seconds-input" type="text" inputmode="numeric" pattern="[0-9]*" value="${timer.totalSeconds % 60}" aria-label="타이머 ${timer.id} 초" />
+          </div>
+          <div class="shortcut-setting timer-shortcut-setting">
+            <span class="control-label">재시작 단축키</span>
+            <button class="shortcut-input shortcut-button" type="button" aria-label="타이머 ${timer.id} 단축키 설정"><span class="timer-shortcut">${formatShortcut(timer.shortcut)}</span></button>
+            <span class="shortcut-hint shortcut-hint-text">이 타이머만 재시작합니다.</span>
+          </div>
+          <div class="settings-actions">
+            <button class="secondary modal-close" type="button">취소</button>
+            <button class="primary modal-save" type="button">저장</button>
+          </div>
+        </dialog>`;
+
+      const settingsModal = element.querySelector(".settings-modal");
+      element.querySelector(".settings-toggle").addEventListener("click", () => settingsModal.showModal());
+      element.querySelector(".modal-close").addEventListener("click", () => settingsModal.close());
+      element.querySelector(".modal-save").addEventListener("click", () => settingsModal.close());
+      element.querySelector(".name-input").addEventListener("change", (event) => {
+        timer.name = event.target.value.trim() || `타이머 ${timer.id}`;
+        event.target.value = timer.name;
+        localStorage.setItem(`meso-watch-timer-${timer.id}-name`, timer.name);
+        element.querySelector(".timer-label").textContent = timer.name;
+      });
+      element.querySelectorAll(".duration-input").forEach((input) => input.addEventListener("input", (event) => {
+        event.target.value = event.target.value.replace(/\D/g, "");
+        if (Number(event.target.value) > 60) event.target.value = "0";
+      }));
+      element.querySelectorAll(".duration-input").forEach((input) => input.addEventListener("change", () => {
+        const minutesInput = element.querySelector(".minutes-input");
+        const secondsInput = element.querySelector(".seconds-input");
+        const minutes = Math.min(60, Math.max(0, Number(minutesInput.value) || 0));
+        const seconds = Math.min(60, Math.max(0, Number(secondsInput.value) || 0));
+        const totalSeconds = minutes * 60 + seconds;
+        if (totalSeconds === 0) {
+          minutesInput.value = 0;
+          secondsInput.value = 1;
+          timer.totalSeconds = 1;
+        } else {
+          minutesInput.value = minutes;
+          secondsInput.value = seconds;
+          timer.totalSeconds = totalSeconds;
+        }
+        resetTimer(timer);
+        timer.remainingSeconds = timer.totalSeconds;
+        updateTimerElement(timer);
+      }));
+      element.querySelector(".shortcut-button").addEventListener("click", () => {
+        isSettingShortcutFor = timer.id;
+        element.querySelector(".shortcut-hint-text").textContent = "원하는 키를 입력하세요. Esc로 취소할 수 있습니다.";
+      });
+      element.querySelector(".start-button").addEventListener("click", () => startTimer(timer));
+      element.querySelector(".pause-button").addEventListener("click", () => stopTimer(timer));
+      element.querySelector(".reset-button").addEventListener("click", () => resetTimer(timer));
+      element.querySelector(".restart-button").addEventListener("click", () => restartTimer(timer));
+      element.querySelector(".remove-button").addEventListener("click", () => removeTimer(timer));
+      timerList.appendChild(element);
+      updateTimerElement(timer);
+    }
+
+    function renderAllTimers() {
+      timerList.replaceChildren();
+      timers.forEach(renderTimer);
     }
 
     function notifyDone() {
-      if (typeof AudioContext !== "undefined") {
-        const audioContext = new AudioContext();
-        const oscillator = audioContext.createOscillator();
-        const gain = audioContext.createGain();
-        oscillator.connect(gain);
-        gain.connect(audioContext.destination);
-        oscillator.frequency.value = 660;
-        gain.gain.setValueAtTime(0.08, audioContext.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.5);
-        oscillator.start();
-        oscillator.stop(audioContext.currentTime + 0.5);
-      }
+      if (typeof AudioContext === "undefined") return;
+      const audioContext = new AudioContext();
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.frequency.value = 660;
+      gain.gain.setValueAtTime(0.08, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.5);
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.5);
     }
 
-    function tick() {
-      if (remainingSeconds <= 1) {
-        stopTimer();
-        remainingSeconds = 0;
+    function tickTimer(timer) {
+      if (timer.remainingSeconds <= 1) {
+        stopTimer(timer);
+        timer.remainingSeconds = 0;
+        updateTimerElement(timer);
         notifyDone();
-        render();
         return;
       }
-      remainingSeconds -= 1;
-      render();
+      timer.remainingSeconds -= 1;
+      updateTimerElement(timer);
     }
 
-    function startTimer() {
-      if (timerId || remainingSeconds === 0) return;
-      timerId = setInterval(tick, 1000);
-      startButton.disabled = true;
-      pauseButton.disabled = false;
+    function startTimer(timer) {
+      if (timer.timerId || timer.remainingSeconds === 0) return;
+      timer.timerId = setInterval(() => tickTimer(timer), 1000);
+      updateTimerElement(timer);
     }
 
-    function stopTimer() {
-      clearInterval(timerId);
-      timerId = null;
-      startButton.disabled = false;
-      pauseButton.disabled = true;
+    function stopTimer(timer) {
+      clearInterval(timer.timerId);
+      timer.timerId = null;
+      updateTimerElement(timer);
     }
 
-    function resetTimer() {
-      stopTimer();
-      remainingSeconds = totalSeconds;
-      render();
+    function resetTimer(timer) {
+      stopTimer(timer);
+      timer.remainingSeconds = timer.totalSeconds;
+      updateTimerElement(timer);
     }
 
-    function restartTimer() {
-      stopTimer();
-      remainingSeconds = totalSeconds;
-      startTimer();
-      render();
+    function restartTimer(timer) {
+      stopTimer(timer);
+      timer.remainingSeconds = timer.totalSeconds;
+      startTimer(timer);
+      updateTimerElement(timer);
     }
 
-    shortcutButton.addEventListener("click", () => {
-      isSettingShortcut = true;
-      shortcutButton.textContent = "입력 중...";
-          shortcutHint.textContent = "재시작에 사용할 키 또는 조합을 입력하세요. Esc로 취소할 수 있습니다.";
-    });
+    function removeTimer(timer) {
+      stopTimer(timer);
+      timers = timers.filter((item) => item !== timer);
+      renderAllTimers();
+      saveShortcuts();
+    }
+
+    function restartTimerById(timerId) {
+      const timer = timers.find((item) => item.id === timerId);
+      if (timer) restartTimer(timer);
+    }
 
     window.addEventListener("keydown", (event) => {
-      if (isSettingShortcut) {
+      if (isSettingShortcutFor !== null) {
         event.preventDefault();
+        const timer = timers.find((item) => item.id === isSettingShortcutFor);
+        if (!timer) return;
+        const element = getTimerElement(timer);
         if (event.key === "Escape") {
-          isSettingShortcut = false;
-          shortcutHint.textContent = "버튼을 누른 뒤 원하는 키를 입력하세요.";
-          updateShortcutDisplay();
+          isSettingShortcutFor = null;
+          element.querySelector(".shortcut-hint-text").textContent = "이 타이머만 재시작합니다.";
           return;
         }
-        restartShortcut = {
-          key: event.key.toLowerCase(),
-          code: event.code,
-          ctrlKey: event.ctrlKey,
-          altKey: event.altKey,
-          shiftKey: event.shiftKey,
-          metaKey: event.metaKey
-        };
-        localStorage.setItem(shortcutStorageKey, JSON.stringify(restartShortcut));
-        window.electronAPI?.setGlobalShortcut(restartShortcut);
-        isSettingShortcut = false;
-        shortcutHint.textContent = "이 키로 타이머를 재시작합니다.";
-        updateShortcutDisplay();
+        timer.shortcut = { key: event.key.toLowerCase(), code: event.code, ctrlKey: event.ctrlKey, altKey: event.altKey, shiftKey: event.shiftKey, metaKey: event.metaKey };
+        isSettingShortcutFor = null;
+        updateTimerElement(timer);
+        element.querySelector(".shortcut-hint-text").textContent = "이 타이머만 재시작합니다.";
+        saveShortcuts();
         return;
       }
 
-      if (!window.electronAPI && !event.repeat && matchesShortcut(event)) {
-        event.preventDefault();
-        restartTimer();
-      }
-    });
-
-    startButton.addEventListener("click", startTimer);
-    pauseButton.addEventListener("click", stopTimer);
-    resetButton.addEventListener("click", resetTimer);
-    restartButton.addEventListener("click", restartTimer);
-
-    window.electronAPI?.onGlobalRestart(restartTimer);
-    window.electronAPI?.setGlobalShortcut(restartShortcut);
-
-    presetButtons.forEach((button) => {
-      button.addEventListener("click", () => {
-        presetButtons.forEach((item) => item.classList.remove("active"));
-        button.classList.add("active");
-        resetTimer();
-        totalSeconds = Number(button.dataset.minutes) * 60;
-        remainingSeconds = totalSeconds;
-        render();
+      if (window.electronAPI || event.repeat) return;
+      timers.forEach((timer) => {
+        const shortcut = timer.shortcut;
+        if (event.key.toLowerCase() === shortcut.key && event.ctrlKey === shortcut.ctrlKey && event.altKey === shortcut.altKey && event.shiftKey === shortcut.shiftKey && event.metaKey === shortcut.metaKey) restartTimer(timer);
       });
     });
 
-    updateShortcutDisplay();
-    pauseButton.disabled = true;
-    render();
+    addTimerButton.addEventListener("click", () => {
+      const timer = createTimer();
+      timers.push(timer);
+      renderTimer(timer);
+      saveShortcuts();
+      getTimerElement(timer)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+
+    window.electronAPI?.onGlobalRestart(restartTimerById);
+    timers.push(createTimer());
+    renderAllTimers();
+    saveShortcuts();
   </script>
 </body>
 </html>

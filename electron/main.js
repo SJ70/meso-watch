@@ -3,7 +3,7 @@ const { app, BrowserWindow, ipcMain } = require("electron");
 const { uIOhook, UiohookKey } = require("uiohook-napi");
 
 let mainWindow = null;
-let observedShortcut = null;
+let observedShortcuts = [];
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -46,20 +46,20 @@ function keycodeFromShortcut(shortcut) {
   return UiohookKey[codeAliases[code] || code];
 }
 
-ipcMain.handle("set-global-shortcut", (_event, shortcut) => {
-  const keycode = keycodeFromShortcut(shortcut);
-  if (!keycode) return false;
-  observedShortcut = { ...shortcut, keycode };
+ipcMain.handle("set-global-shortcuts", (_event, shortcuts) => {
+  observedShortcuts = shortcuts
+    .map((item) => ({ ...item, keycode: keycodeFromShortcut(item.shortcut) }))
+    .filter((item) => item.keycode);
   return true;
 });
 
 uIOhook.on("keydown", (event) => {
-  if (!observedShortcut || event.keycode !== observedShortcut.keycode) return;
-  if (event.ctrlKey !== observedShortcut.ctrlKey
-    || event.altKey !== observedShortcut.altKey
-    || event.shiftKey !== observedShortcut.shiftKey
-    || event.metaKey !== observedShortcut.metaKey) return;
-  mainWindow?.webContents.send("global-restart");
+  const matchedShortcut = observedShortcuts.find((item) => event.keycode === item.keycode
+    && event.ctrlKey === item.shortcut.ctrlKey
+    && event.altKey === item.shortcut.altKey
+    && event.shiftKey === item.shortcut.shiftKey
+    && event.metaKey === item.shortcut.metaKey);
+  if (matchedShortcut) mainWindow?.webContents.send("global-restart", matchedShortcut.id);
 });
 
 app.whenReady().then(() => {
