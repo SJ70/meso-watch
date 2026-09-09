@@ -15,6 +15,7 @@
   "build": {
     "appId": "com.mesowatch.app",
     "productName": "메소워치",
+    "npmRebuild": false,
     "files": [
       "electron/**/*",
       "src/**/*",
