@@ -113,7 +113,7 @@ h1 {
   grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
   gap: 18px;
   align-items: center;
-  padding: clamp(12px, 2vw, 20px);
+  padding: 12px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--card);
@@ -308,7 +308,7 @@ h1 {
 
 .timer-display strong {
   color: var(--ink);
-  font: 800 clamp(4rem, 15vw, 7rem)/0.9 serif;
+  font: 800 4rem serif;
   letter-spacing: 0;
 }
 
@@ -509,14 +509,6 @@ button:disabled {
 .timer-action:focus-visible {
   color: var(--ink);
   background: #303b47;
-}
-
-@media (max-width: 650px) {
-  main { padding-top: 24px; }
-  header { align-items: stretch; flex-direction: column; }
-  h1 { font-size: 2.5rem; }
-  .timer-card { grid-template-columns: 1fr; gap: 30px; }
-  .header-actions { justify-content: flex-end; }
 }
 
 .settings-toggle {
