@@ -29,6 +29,17 @@
     <section class="timer-list" id="timerList" aria-label="등록된 타이머"></section>
   </main>
 
+  <dialog class="settings-modal confirm-modal" id="confirmDialog" aria-label="삭제 확인">
+    <div class="settings-modal-header">
+      <span class="section-title">타이머 삭제</span>
+    </div>
+    <p class="confirm-message" id="confirmMessage"></p>
+    <div class="settings-actions">
+      <button class="secondary" id="confirmCancelButton" type="button">취소</button>
+      <button class="primary" id="confirmDeleteButton" type="button">삭제</button>
+    </div>
+  </dialog>
+
   <script type="module">
     import createIconElement from "../node_modules/lucide/dist/esm/createElement.mjs";
     import Volume1Icon from "../node_modules/lucide/dist/esm/icons/volume-1.mjs";
@@ -48,6 +59,25 @@
     const volumeControl = document.getElementById("volumeControl");
     const volumeSlider = document.getElementById("volumeSlider");
     const volumeToggleButton = document.getElementById("volumeToggleButton");
+
+    const confirmDialog = document.getElementById("confirmDialog");
+    const confirmMessage = document.getElementById("confirmMessage");
+    const confirmCancelButton = document.getElementById("confirmCancelButton");
+    const confirmDeleteButton = document.getElementById("confirmDeleteButton");
+    let pendingDeleteTimer = null;
+
+    confirmCancelButton.addEventListener("click", () => {
+      pendingDeleteTimer = null;
+      confirmDialog.close();
+    });
+    confirmDeleteButton.addEventListener("click", () => {
+      if (pendingDeleteTimer) removeTimer(pendingDeleteTimer);
+      pendingDeleteTimer = null;
+      confirmDialog.close();
+    });
+    confirmDialog.addEventListener("cancel", () => {
+      pendingDeleteTimer = null;
+    });
 
     function loadVolume() {
       const stored = Number(localStorage.getItem("meso-watch-volume"));
@@ -388,7 +418,7 @@
       element.querySelector(".pause-button").addEventListener("click", () => stopTimer(timer));
       element.querySelector(".reset-button").addEventListener("click", () => resetTimer(timer));
       element.querySelector(".restart-button").addEventListener("click", () => restartTimer(timer));
-      element.querySelector(".remove-button").addEventListener("click", () => removeTimer(timer));
+      element.querySelector(".remove-button").addEventListener("click", () => confirmDeleteTimer(timer));
       target.appendChild(element);
       updateTimerElement(timer);
     }
@@ -466,6 +496,12 @@
       timer.element = null;
       renderAllTimers();
       saveShortcuts();
+    }
+
+    function confirmDeleteTimer(timer) {
+      confirmMessage.textContent = `"${timer.name}" 타이머를 삭제할까요?`;
+      pendingDeleteTimer = timer;
+      confirmDialog.showModal();
     }
 
     function restartTimerById(timerId) {
