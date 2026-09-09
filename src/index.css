@@ -29,10 +29,14 @@ header {
   gap: 12px;
 }
 
-.add-timer {
+.add-timer.primary {
+  display: inline-flex;
   flex: 0 0 auto;
-  padding: 12px 16px;
-  font-size: 0.82rem;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
 }
 
 .volume-control {
@@ -189,11 +193,10 @@ h1 {
   position: relative;
   display: grid;
   min-width: 0;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.7fr);
+  grid-template-columns: 1fr;
   align-items: center;
   gap: 16px;
   grid-column: 1 / -1;
-  padding: 16px;
   border-radius: 8px;
 }
 
@@ -249,7 +252,7 @@ h1 {
 
 .timer-card-header {
   display: grid;
-  grid-template-columns: auto 1fr auto auto;
+  grid-template-columns: auto 1fr auto;
   gap: 12px;
   align-items: center;
 }
@@ -273,16 +276,8 @@ h1 {
   font: 700 1rem sans-serif;
 }
 
-.remove-button {
-  padding: 7px 10px;
-  color: var(--muted);
-  background: transparent;
-  border: 1px solid var(--line);
-  font: 700 0.7rem sans-serif;
-}
-
-.remove-button:hover,
-.remove-button:focus-visible {
+.remove-button.timer-action:hover,
+.remove-button.timer-action:focus-visible {
   color: #fff;
   background: var(--accent-dark);
 }
@@ -443,15 +438,6 @@ button {
 }
 
 button:focus-visible { outline: 3px solid rgba(232, 93, 63, 0.35); outline-offset: 3px; }
-button:hover { transform: translateY(-2px); }
-
-.actions { display: grid; gap: 10px; }
-
-.timer-actions {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-}
 
 button:disabled {
   cursor: not-allowed;
@@ -471,10 +457,6 @@ button:disabled {
   background: var(--accent-dark);
 }
 
-.start-button:disabled {
-  background: #35424f;
-}
-
 .secondary {
   padding: 13px 20px;
   color: var(--ink);
@@ -483,21 +465,50 @@ button:disabled {
   font: 700 0.82rem sans-serif;
 }
 
+.timer-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.timer-actions-group {
+  display: flex;
+  gap: 8px;
+}
+
+.timer-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+}
+
+.timer-action:hover,
+.timer-action:focus-visible {
+  color: var(--ink);
+  background: #303b47;
+}
+
 @media (max-width: 650px) {
   main { padding-top: 24px; }
   header { align-items: stretch; flex-direction: column; }
   h1 { font-size: 2.5rem; }
   .timer-card { grid-template-columns: 1fr; gap: 30px; }
-  .timer-progress { grid-template-columns: 1fr; }
-  .add-timer { width: 100%; }
+  .header-actions { justify-content: flex-end; }
 }
 
 .settings-toggle {
-  padding: 7px 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px;
   color: var(--muted);
   background: transparent;
   border: 1px solid var(--line);
-  font: 700 0.7rem sans-serif;
 }
 
 .settings-toggle:hover,
