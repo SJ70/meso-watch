@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>메소워치</title>
-  <link rel="stylesheet" href="src/color.css" />
-  <link rel="stylesheet" href="src/index.css" />
+  <link rel="stylesheet" href="color.css" />
+  <link rel="stylesheet" href="index.css" />
 </head>
 <body>
   <main>
@@ -195,13 +195,14 @@
           metaKey: event.metaKey
         };
         localStorage.setItem(shortcutStorageKey, JSON.stringify(restartShortcut));
+        window.electronAPI?.setGlobalShortcut(restartShortcut);
         isSettingShortcut = false;
         shortcutHint.textContent = "이 키로 타이머를 재시작합니다.";
         updateShortcutDisplay();
         return;
       }
 
-      if (!event.repeat && matchesShortcut(event)) {
+      if (!window.electronAPI && !event.repeat && matchesShortcut(event)) {
         event.preventDefault();
         restartTimer();
       }
@@ -212,9 +213,8 @@
     resetButton.addEventListener("click", resetTimer);
     restartButton.addEventListener("click", restartTimer);
 
-    if (window.__TAURI__?.event?.listen) {
-      window.__TAURI__.event.listen("global-restart", restartTimer);
-    }
+    window.electronAPI?.onGlobalRestart(restartTimer);
+    window.electronAPI?.setGlobalShortcut(restartShortcut);
 
     presetButtons.forEach((button) => {
       button.addEventListener("click", () => {

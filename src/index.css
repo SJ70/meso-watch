@@ -54,16 +54,18 @@ h1 {
   background: var(--card);
 }
 
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
+.timer-display {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 10px 0 24px;
+  border-bottom: 1px solid var(--line);
+}
+
+.timer-display strong {
+  color: var(--ink);
+  font: 800 clamp(4rem, 15vw, 7rem)/0.9 Georgia, "Times New Roman", serif;
+  letter-spacing: 0;
 }
 
 .controls {
@@ -139,6 +141,18 @@ button:hover { transform: translateY(-2px); }
 .preset.active { color: #fff; background: var(--accent); }
 
 .actions { display: grid; gap: 10px; }
+
+.timer-actions {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+  transform: none;
+}
 
 .primary {
   padding: 17px 20px;
