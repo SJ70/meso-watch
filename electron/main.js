@@ -8,6 +8,7 @@ let observedShortcuts = [];
 function createWindow() {
   mainWindow = new BrowserWindow({
     title: "메소워치",
+    icon: path.join(__dirname, "..", "public", "meso.png"),
     width: 560,
     height: 680,
     minWidth: 360,

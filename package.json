@@ -17,10 +17,12 @@
     "productName": "메소워치",
     "files": [
       "electron/**/*",
-      "src/**/*"
+      "src/**/*",
+      "public/**/*"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "public/meso.png"
     }
   },
   "dependencies": {
