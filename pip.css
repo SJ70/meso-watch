@@ -48,9 +48,15 @@ body {
   letter-spacing: -0.05em;
 }
 
+.pip-shortcut {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font: 700 0.72rem Arial, sans-serif;
+}
+
 .pip-controls {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 6px;
   margin-top: 20px;
 }

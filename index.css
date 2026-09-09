@@ -22,11 +22,17 @@ header {
   margin-bottom: 24px;
 }
 
+.title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 h1 {
   margin: 0;
   color: var(--accent);
   font-family: "Arial Rounded MT Bold", "Trebuchet MS", Arial, sans-serif;
-  font-size: clamp(2.5rem, 8vw, 4.7rem);
+  font-size: 2.5rem;
   line-height: 0.9;
   letter-spacing: -0.06em;
 }
@@ -82,6 +88,36 @@ h1 {
   margin-bottom: 28px;
 }
 
+.shortcut-setting {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px 12px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.shortcut-setting .control-label {
+  grid-column: 1 / -1;
+  margin-bottom: 0;
+}
+
+.shortcut-input {
+  width: 144px;
+  min-width: 144px;
+  overflow: hidden;
+  padding: 10px 12px;
+  color: var(--ink);
+  background: #303b47;
+  font: 700 0.82rem Arial, sans-serif;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shortcut-hint {
+  color: var(--muted);
+  font: 0.72rem/1.3 Arial, sans-serif;
+}
+
 button {
   border: 0;
   border-radius: 4px;
@@ -122,5 +158,6 @@ button:hover { transform: translateY(-2px); }
 @media (max-width: 650px) {
   main { padding-top: 24px; }
   header { align-items: end; }
+  h1 { font-size: 2.5rem; }
   .timer-card { grid-template-columns: 1fr; gap: 30px; }
 }
