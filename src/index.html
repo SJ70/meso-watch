@@ -104,6 +104,9 @@
       element.querySelector(".timer-time").textContent = formatTime(timer.remainingSeconds);
       element.querySelector(".timer-shortcut").textContent = formatShortcut(timer.shortcut);
       element.querySelector(".timer-shortcut-badge").textContent = formatShortcut(timer.shortcut);
+      element.classList.toggle("is-running", Boolean(timer.timerId));
+      const progress = timer.totalSeconds > 0 ? (timer.remainingSeconds / timer.totalSeconds) * 100 : 0;
+      element.style.setProperty("--progress", `${progress}%`);
       element.querySelector(".start-button").disabled = Boolean(timer.timerId);
       element.querySelector(".pause-button").disabled = !timer.timerId;
     }

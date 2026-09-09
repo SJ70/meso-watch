@@ -50,6 +50,7 @@ h1 {
 }
 
 .timer-card {
+  position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
   gap: 18px;
@@ -60,20 +61,45 @@ h1 {
   background: var(--card);
 }
 
+.timer-card::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  padding: 4px;
+  border-radius: 8px;
+  background: conic-gradient(from -90deg, var(--accent) var(--progress), transparent 0);
+  content: "";
+  opacity: 0;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  transition: opacity 160ms ease;
+}
+
+.timer-card.is-running::before {
+  opacity: 1;
+}
+
+.timer-card > * {
+  position: relative;
+  z-index: 1;
+}
+
 .timer-card-header {
   grid-column: 1 / -1;
 }
 
 .timer-progress {
-  min-width: 0;
-}
-
-.timer-progress {
+  position: relative;
   display: grid;
+  min-width: 0;
   grid-template-columns: minmax(0, 1fr) minmax(220px, 0.7fr);
   align-items: center;
   gap: 16px;
   grid-column: 1 / -1;
+  padding: 16px;
+  border-radius: 8px;
 }
 
 .section-title {
@@ -176,10 +202,11 @@ h1 {
 
 .timer-display {
   display: grid;
+  place-self: center;
   justify-items: center;
+  align-content: center;
   gap: 6px;
-  padding: 0 16px 0 0;
-  border-right: 1px solid var(--line);
+  padding: 4px 0;
 }
 
 .timer-display strong {
@@ -354,7 +381,6 @@ button:disabled {
   h1 { font-size: 2.5rem; }
   .timer-card { grid-template-columns: 1fr; gap: 30px; }
   .timer-progress { grid-template-columns: 1fr; }
-  .timer-display { padding: 4px 0 16px; border-right: 0; border-bottom: 1px solid var(--line); }
   .add-timer { width: 100%; }
 }
 
