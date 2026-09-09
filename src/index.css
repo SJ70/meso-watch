@@ -59,6 +59,19 @@ h1 {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: var(--card);
+  cursor: grab;
+}
+
+.timer-card:active {
+  cursor: grabbing;
+}
+
+.timer-card.is-dragging {
+  opacity: 0.55;
+}
+
+.timer-card.is-drag-over {
+  border-color: var(--accent);
 }
 
 .timer-card::before {

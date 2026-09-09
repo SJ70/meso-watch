@@ -114,6 +114,7 @@
     function renderTimer(timer) {
       const element = document.createElement("article");
       element.className = "timer-card";
+      element.draggable = true;
       element.dataset.timerId = timer.id;
       element.innerHTML = `
         <div class="timer-card-header">
@@ -160,6 +161,35 @@
         </dialog>`;
 
       const settingsModal = element.querySelector(".settings-modal");
+      element.addEventListener("dragstart", (event) => {
+        if (event.target.closest("button, input, dialog")) {
+          event.preventDefault();
+          return;
+        }
+        element.classList.add("is-dragging");
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", String(timer.id));
+      });
+      element.addEventListener("dragend", () => {
+        element.classList.remove("is-dragging");
+        document.querySelectorAll(".timer-card.is-drag-over").forEach((item) => item.classList.remove("is-drag-over"));
+      });
+      element.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = "move";
+        if (!element.classList.contains("is-dragging")) element.classList.add("is-drag-over");
+      });
+      element.addEventListener("dragleave", () => element.classList.remove("is-drag-over"));
+      element.addEventListener("drop", (event) => {
+        event.preventDefault();
+        const draggedId = Number(event.dataTransfer.getData("text/plain"));
+        const fromIndex = timers.findIndex((item) => item.id === draggedId);
+        const toIndex = timers.indexOf(timer);
+        if (fromIndex < 0 || fromIndex === toIndex) return;
+        const [draggedTimer] = timers.splice(fromIndex, 1);
+        timers.splice(toIndex, 0, draggedTimer);
+        renderAllTimers();
+      });
       element.querySelector(".settings-toggle").addEventListener("click", () => settingsModal.showModal());
       element.querySelector(".modal-close").addEventListener("click", () => settingsModal.close());
       element.querySelector(".modal-save").addEventListener("click", () => settingsModal.close());
