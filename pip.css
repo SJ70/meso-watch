@@ -25,8 +25,8 @@ body {
 .pip-surface {
   display: grid;
   min-height: 100vh;
+  align-content: center;
   padding: 24px;
-  place-content: center;
   background: var(--card);
   text-align: center;
 }
@@ -46,4 +46,40 @@ body {
   font-weight: 800;
   line-height: 0.9;
   letter-spacing: -0.05em;
+}
+
+.pip-controls {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-top: 20px;
+}
+
+.pip-control {
+  display: grid;
+  width: 100%;
+  aspect-ratio: 1;
+  place-items: center;
+  padding: 9px 5px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--ink);
+  background: #35424f;
+  cursor: pointer;
+  font: 700 0.72rem Arial, sans-serif;
+}
+
+.pip-control svg {
+  width: max(20px, 8vw);
+  height: max(20px, 8vw);
+  stroke-width: 2.5;
+}
+
+.pip-control[hidden] {
+  display: none;
+}
+
+.pip-control:hover,
+.pip-control:focus-visible {
+  background: var(--accent);
 }

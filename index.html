@@ -68,8 +68,7 @@
 
     function tick() {
       if (remainingSeconds <= 1) {
-        clearInterval(timerId);
-        timerId = null;
+        stopTimer();
         remainingSeconds = 0;
         notifyDone();
         render();
@@ -79,21 +78,49 @@
       render();
     }
 
+    function startTimer() {
+      if (timerId || remainingSeconds === 0) return;
+      timerId = setInterval(tick, 1000);
+      window.pipController.setRunning(true);
+    }
+
+    function stopTimer() {
+      clearInterval(timerId);
+      timerId = null;
+      window.pipController.setRunning(false);
+    }
+
+    function resetTimer() {
+      stopTimer();
+      remainingSeconds = totalSeconds;
+      render();
+    }
+
+    function restartTimer() {
+      stopTimer();
+      remainingSeconds = totalSeconds;
+      startTimer();
+      render();
+    }
+
     document.getElementById("pipButton").addEventListener("click", async () => {
       const isOpen = await window.pipController.toggle();
       if (isOpen === true) {
         if (remainingSeconds === 0) remainingSeconds = totalSeconds;
-        timerId = setInterval(tick, 1000);
+        startTimer();
       } else if (isOpen === false) {
-        clearInterval(timerId);
-        timerId = null;
+        stopTimer();
       }
       render();
     });
 
+    window.addEventListener("pipplay", startTimer);
+    window.addEventListener("pipstop", stopTimer);
+    window.addEventListener("pipreset", resetTimer);
+    window.addEventListener("piprestart", restartTimer);
+
     window.addEventListener("pipclosed", () => {
-      clearInterval(timerId);
-      timerId = null;
+      stopTimer();
       render();
     });
 
@@ -101,8 +128,7 @@
       button.addEventListener("click", () => {
         presetButtons.forEach((item) => item.classList.remove("active"));
         button.classList.add("active");
-        clearInterval(timerId);
-        timerId = null;
+        resetTimer();
         totalSeconds = Number(button.dataset.minutes) * 60;
         remainingSeconds = totalSeconds;
         render();
