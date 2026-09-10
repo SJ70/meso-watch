@@ -218,7 +218,7 @@
       return `타이머 ${index >= 0 ? index + 1 : timers.length + 1}`;
     }
 
-    function createTimer(minutes = 30) {
+    function createTimer(minutes = 1) {
       const id = nextTimerId;
       setNextTimerId(nextTimerId + 1);
       const totalSeconds = minutes * 60;
