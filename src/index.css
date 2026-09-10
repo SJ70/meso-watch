@@ -1,11 +1,12 @@
-* { box-sizing: border-box; }
+:root { font-family: sans-serif; }
+
+* { box-sizing: border-box; font-family: inherit; }
 
 body {
   min-height: 100vh;
   margin: 0;
   color: var(--ink);
   background: var(--paper);
-  font-family: sans-serif;
 }
 
 main {
@@ -95,7 +96,6 @@ header {
 h1 {
   margin: 0;
   color: var(--accent);
-  font-family: sans-serif;
   font-size: 2.5rem;
   line-height: 0.9;
   letter-spacing: -0.06em;
@@ -104,14 +104,16 @@ h1 {
 .subtitle {
   margin: 12px 0 0;
   color: var(--muted);
-  font: 700 0.9rem/1.2 sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  line-height: 1.2;
 }
 
 .timer-card {
   position: relative;
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
-  gap: 18px;
+  gap: 12px;
   align-items: center;
   padding: 12px;
   border: 1px solid var(--line);
@@ -211,7 +213,8 @@ h1 {
   display: block;
   margin-bottom: 24px;
   color: var(--ink);
-  font: 700 1.15rem sans-serif;
+  font-weight: 700;
+  font-size: 1.15rem;
 }
 
 .settings-modal {
@@ -243,7 +246,9 @@ h1 {
 .confirm-message {
   margin: 0;
   color: var(--muted);
-  font: 700 0.9rem/1.4 sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  line-height: 1.4;
 }
 
 .settings-actions {
@@ -280,13 +285,15 @@ h1 {
   border: 1px solid var(--line);
   border-radius: 4px;
   background: #303b47;
-  font: 700 0.8rem sans-serif;
+  font-weight: 700;
+  font-size: 0.8rem;
   white-space: nowrap;
 }
 
 .timer-label {
   color: var(--ink);
-  font: 700 1rem sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
 }
 
 .global-shortcut {
@@ -309,7 +316,9 @@ h1 {
 
 .timer-display strong {
   color: var(--ink);
-  font: 800 4rem serif;
+  font-family: serif;
+  font-weight: 400;
+  font-size: 4rem;
   letter-spacing: 0;
 }
 
@@ -318,7 +327,9 @@ h1 {
   right: -30px;
   bottom: 12px;
   color: var(--muted);
-  font: 800 1rem sans-serif;
+  font-family: serif;
+  font-weight: 800;
+  font-size: 1rem;
 }
 
 .controls {
@@ -331,7 +342,9 @@ h1 {
   display: block;
   margin-bottom: 10px;
   color: var(--muted);
-  font: 700 0.72rem/1 sans-serif;
+  font-weight: 700;
+  font-size: 0.72rem;
+  line-height: 1;
   letter-spacing: 0.11em;
   text-transform: uppercase;
 }
@@ -355,7 +368,10 @@ h1 {
 
 .duration-separator {
   color: var(--muted);
-  font: 800 3rem/1 serif;
+  font-family: serif;
+  font-weight: 400;
+  font-size: 3rem;
+  line-height: 1;
 }
 
 .name-field {
@@ -376,7 +392,8 @@ h1 {
   background: #303b47;
   border: 1px solid var(--line);
   border-radius: 4px;
-  font: 700 1rem sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
 }
 
 .name-input:focus {
@@ -392,7 +409,10 @@ h1 {
   background: transparent;
   border: 0;
   border-radius: 0;
-  font: 800 3.5rem/1 serif;
+  font-family: serif;
+  font-weight: 400;
+  font-size: 3.5rem;
+  line-height: 1;
   text-align: center;
   appearance: textfield;
 }
@@ -428,7 +448,8 @@ h1 {
   border-radius: 4px;
   color: var(--ink);
   background: #303b47;
-  font: 700 0.9rem sans-serif;
+  font-weight: 700;
+  font-size: 0.9rem;
   text-overflow: ellipsis;
   white-space: nowrap;
   text-align: center;
@@ -470,7 +491,8 @@ button:disabled {
   padding: 17px 20px;
   color: #fff;
   background: var(--accent);
-  font: 700 1rem sans-serif;
+  font-weight: 700;
+  font-size: 1rem;
 }
 
 .primary:hover,
@@ -483,7 +505,8 @@ button:disabled {
   color: var(--ink);
   background: transparent;
   border: 1px solid var(--line);
-  font: 700 0.82rem sans-serif;
+  font-weight: 700;
+  font-size: 0.82rem;
 }
 
 .secondary:hover,
@@ -556,7 +579,8 @@ button:disabled {
 .duration-hint {
   color: var(--muted);
   opacity: 0.6;
-  font: 400 0.68rem sans-serif;
+  font-weight: 400;
+  font-size: 0.68rem;
 }
 
 .duration-setting .duration-fields {
