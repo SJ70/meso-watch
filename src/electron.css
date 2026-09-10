@@ -1,3 +1,7 @@
+body {
+  min-height: 0;
+}
+
 header {
   -webkit-app-region: drag;
   justify-content: flex-end;

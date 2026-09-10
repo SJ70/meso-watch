@@ -1,5 +1,5 @@
 const path = require("node:path");
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, screen } = require("electron");
 const { uIOhook, UiohookKey } = require("uiohook-napi");
 
 let mainWindow = null;
@@ -12,7 +12,7 @@ function createWindow() {
     width: 700,
     height: 640,
     minWidth: 700,
-    minHeight: 640,
+    minHeight: 120,
     maxWidth: 860,
     resizable: true,
     transparent: true,
@@ -59,6 +59,16 @@ ipcMain.handle("set-global-shortcuts", (_event, shortcuts) => {
     .map((item) => ({ ...item, keycode: keycodeFromShortcut(item.shortcut) }))
     .filter((item) => item.keycode);
   return true;
+});
+
+ipcMain.on("resize-to-content", (_event, contentHeight) => {
+  if (!mainWindow) return;
+  const bounds = mainWindow.getBounds();
+  const workAreaHeight = screen.getDisplayMatching(bounds).workAreaSize.height;
+  const height = Math.min(Math.max(Math.round(contentHeight), 120), workAreaHeight - 40);
+  if (height === bounds.height) return;
+  mainWindow.setBounds({ x: bounds.x, y: bounds.y, width: bounds.width, height: height + 1 });
+  mainWindow.setBounds({ x: bounds.x, y: bounds.y, width: bounds.width, height });
 });
 
 uIOhook.on("keydown", (event) => {

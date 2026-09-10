@@ -92,6 +92,13 @@
     const timerList = document.getElementById("timerList");
     const addTimerButton = document.getElementById("addTimerButton");
     addTimerButton.appendChild(createIconElement("alarm-clock-plus", { width: 18, height: 18 }));
+
+    if (window.electronAPI) {
+      const contentResizeObserver = new ResizeObserver((entries) => {
+        window.electronAPI.resizeToContent(Math.ceil(entries[0].contentRect.height));
+      });
+      contentResizeObserver.observe(document.body);
+    }
     const closeButton = document.getElementById("closeButton");
     if (window.electronAPI) {
       closeButton.appendChild(createIconElement("x", { width: 18, height: 18 }));
