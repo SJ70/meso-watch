@@ -1,9 +1,9 @@
 body {
   min-height: 0;
+  -webkit-app-region: drag;
 }
 
 header {
-  -webkit-app-region: drag;
   justify-content: flex-end;
 }
 
@@ -11,7 +11,10 @@ header {
   display: none;
 }
 
-.header-actions {
+.header-actions,
+.global-controls,
+.timer-card,
+.settings-modal {
   -webkit-app-region: no-drag;
 }
 
