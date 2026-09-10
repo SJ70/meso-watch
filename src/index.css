@@ -335,20 +335,7 @@ h1 {
   font-weight: 600;
   font-size: 1rem;
   white-space: nowrap;
-}
-
-.timer-label-text {
-  display: inline-block;
-}
-
-.timer-label.is-overflowing .timer-label-text {
-  animation: timer-label-marquee 6s ease-in-out infinite;
-}
-
-@keyframes timer-label-marquee {
-  0%, 15% { transform: translateX(0); }
-  50%, 65% { transform: translateX(var(--marquee-distance, 0px)); }
-  100% { transform: translateX(0); }
+  text-overflow: ellipsis;
 }
 
 .global-shortcut {
