@@ -587,6 +587,30 @@ button:disabled {
   margin-bottom: 0;
 }
 
+.duration-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.duration-preset {
+  padding: 7px 10px;
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-weight: 700;
+  font-size: 0.76rem;
+}
+
+.duration-preset:hover,
+.duration-preset:focus-visible {
+  color: var(--ink);
+  background: #303b47;
+  border-color: var(--accent);
+}
+
 .settings-modal {
   cursor: default;
 }
