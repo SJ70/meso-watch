@@ -263,7 +263,7 @@
     function buildTimer(id, totalMs, fallbackIndex = null) {
       const name = localStorage.getItem(`meso-watch-timer-${id}-name`)
         || (fallbackIndex === null ? defaultTimerName(null) : `타이머 ${fallbackIndex + 1}`);
-      return { id, name, totalMs, remainingSeconds: Math.floor(totalMs / 1000), remainingMs: totalMs, timerId: null, shortcut: loadShortcut(id), isDraft: false };
+      return { id, name, totalMs, remainingSeconds: Math.floor(totalMs / 1000), remainingMs: totalMs, timerId: null, alarmIntervalId: null, shortcut: loadShortcut(id), isDraft: false };
     }
 
     function createTimer(minutes = 1) {
@@ -533,8 +533,14 @@
       oscillator.stop(audioContext.currentTime + 0.5);
     }
 
-    function notifyDone() {
+    function notifyDone(timer) {
       playNotifySound(volume);
+      timer.alarmIntervalId = setInterval(() => playNotifySound(volume), 1000);
+    }
+
+    function stopAlarm(timer) {
+      clearInterval(timer.alarmIntervalId);
+      timer.alarmIntervalId = null;
     }
 
     function tickTimer(timer) {
@@ -547,7 +553,7 @@
         timer.remainingMs = 0;
         timer.isFinished = true;
         updateTimerElement(timer);
-        notifyDone();
+        notifyDone(timer);
         return;
       }
       updateTimerElement(timer);
@@ -568,6 +574,7 @@
     }
 
     function resetTimer(timer) {
+      stopAlarm(timer);
       stopTimer(timer);
       timer.remainingMs = timer.totalMs;
       timer.remainingSeconds = Math.floor(timer.totalMs / 1000);
@@ -576,6 +583,7 @@
     }
 
     function restartTimer(timer) {
+      stopAlarm(timer);
       stopTimer(timer);
       timer.remainingMs = timer.totalMs;
       timer.remainingSeconds = Math.floor(timer.totalMs / 1000);
@@ -585,6 +593,7 @@
     }
 
     function removeTimer(timer) {
+      stopAlarm(timer);
       stopTimer(timer);
       localStorage.removeItem(`meso-watch-timer-${timer.id}-name`);
       localStorage.removeItem(`meso-watch-timer-${timer.id}-shortcut`);
