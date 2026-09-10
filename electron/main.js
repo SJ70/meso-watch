@@ -9,10 +9,11 @@ function createWindow() {
   mainWindow = new BrowserWindow({
     title: "메소워치",
     icon: path.join(__dirname, "..", "public", "meso.png"),
-    width: 560,
-    height: 680,
-    minWidth: 360,
-    minHeight: 480,
+    width: 700,
+    height: 640,
+    minWidth: 700,
+    minHeight: 640,
+    maxWidth: 860,
     resizable: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
