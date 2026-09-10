@@ -27,7 +27,6 @@
     }
   },
   "dependencies": {
-    "lucide": "^1.43.0",
     "uiohook-napi": "^1.5.5"
   }
 }

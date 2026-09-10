@@ -2,8 +2,8 @@
 node_modules/
 
 # Electron build output
-dist/
-release/
+/dist/
+/release/
 
 # Local environment files
 .env

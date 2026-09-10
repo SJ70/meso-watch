@@ -47,21 +47,11 @@
   </dialog>
 
   <script type="module">
-    import createIconElement from "../node_modules/lucide/dist/esm/createElement.mjs";
-    import Volume1Icon from "../node_modules/lucide/dist/esm/icons/volume-1.mjs";
-    import Volume2Icon from "../node_modules/lucide/dist/esm/icons/volume-2.mjs";
-    import VolumeXIcon from "../node_modules/lucide/dist/esm/icons/volume-x.mjs";
-    import AlarmClockPlusIcon from "../node_modules/lucide/dist/esm/icons/alarm-clock-plus.mjs";
-    import SettingsIcon from "../node_modules/lucide/dist/esm/icons/settings.mjs";
-    import TrashIcon from "../node_modules/lucide/dist/esm/icons/trash.mjs";
-    import PlayIcon from "../node_modules/lucide/dist/esm/icons/play.mjs";
-    import PauseIcon from "../node_modules/lucide/dist/esm/icons/pause.mjs";
-    import SquareIcon from "../node_modules/lucide/dist/esm/icons/square.mjs";
-    import RotateCcwIcon from "../node_modules/lucide/dist/esm/icons/rotate-ccw.mjs";
+    import { createIconElement } from "./svg/icons.js";
 
     const timerList = document.getElementById("timerList");
     const addTimerButton = document.getElementById("addTimerButton");
-    addTimerButton.appendChild(createIconElement(AlarmClockPlusIcon, { width: 18, height: 18 }));
+    addTimerButton.appendChild(createIconElement("alarm-clock-plus", { width: 18, height: 18 }));
     const volumeControl = document.getElementById("volumeControl");
     const volumeSlider = document.getElementById("volumeSlider");
     const volumeToggleButton = document.getElementById("volumeToggleButton");
@@ -93,12 +83,6 @@
     let volume = loadVolume();
     let lastNonZeroVolume = volume || 50;
 
-    const volumeIcons = {
-      "volume-x": VolumeXIcon,
-      "volume-1": Volume1Icon,
-      "volume-2": Volume2Icon
-    };
-
     function volumeIconName(level) {
       if (level === 0) return "volume-x";
       if (level <= 50) return "volume-1";
@@ -107,7 +91,7 @@
 
     function updateVolumeUi() {
       volumeSlider.value = volume;
-      volumeToggleButton.replaceChildren(createIconElement(volumeIcons[volumeIconName(volume)], { width: 18, height: 18 }));
+      volumeToggleButton.replaceChildren(createIconElement(volumeIconName(volume), { width: 18, height: 18 }));
       volumeToggleButton.setAttribute("aria-label", volumeControl.classList.contains("is-open") ? "음량 조절 닫기" : "음량 조절 열기");
     }
 
@@ -377,12 +361,12 @@
         </dialog>`;
 
       const settingsModal = element.querySelector(".settings-modal");
-      element.querySelector(".settings-toggle").appendChild(createIconElement(SettingsIcon, { width: 16, height: 16 }));
-      element.querySelector(".remove-button").appendChild(createIconElement(TrashIcon, { width: 16, height: 16 }));
-      element.querySelector(".start-button").appendChild(createIconElement(PlayIcon, { width: 16, height: 16 }));
-      element.querySelector(".pause-button").appendChild(createIconElement(PauseIcon, { width: 16, height: 16 }));
-      element.querySelector(".reset-button").appendChild(createIconElement(SquareIcon, { width: 16, height: 16 }));
-      element.querySelector(".restart-button").appendChild(createIconElement(RotateCcwIcon, { width: 16, height: 16 }));
+      element.querySelector(".settings-toggle").appendChild(createIconElement("settings", { width: 16, height: 16 }));
+      element.querySelector(".remove-button").appendChild(createIconElement("trash", { width: 16, height: 16 }));
+      element.querySelector(".start-button").appendChild(createIconElement("play", { width: 16, height: 16 }));
+      element.querySelector(".pause-button").appendChild(createIconElement("pause", { width: 16, height: 16 }));
+      element.querySelector(".reset-button").appendChild(createIconElement("square", { width: 16, height: 16 }));
+      element.querySelector(".restart-button").appendChild(createIconElement("rotate-ccw-clock", { width: 16, height: 16 }));
       element.addEventListener("dragstart", (event) => {
         if (event.target.closest("button, input, dialog")) {
           event.preventDefault();
@@ -681,10 +665,10 @@
     const pauseAllButton = document.getElementById("pauseAllButton");
     const resetAllButton = document.getElementById("resetAllButton");
     const restartAllButton = document.getElementById("restartAllButton");
-    startAllButton.prepend(createIconElement(PlayIcon, { width: 16, height: 16 }));
-    pauseAllButton.prepend(createIconElement(PauseIcon, { width: 16, height: 16 }));
-    resetAllButton.prepend(createIconElement(SquareIcon, { width: 16, height: 16 }));
-    restartAllButton.prepend(createIconElement(RotateCcwIcon, { width: 16, height: 16 }));
+    startAllButton.prepend(createIconElement("play", { width: 16, height: 16 }));
+    pauseAllButton.prepend(createIconElement("pause", { width: 16, height: 16 }));
+    resetAllButton.prepend(createIconElement("square", { width: 16, height: 16 }));
+    restartAllButton.prepend(createIconElement("rotate-ccw-clock", { width: 16, height: 16 }));
     startAllButton.addEventListener("click", () => timers.forEach((timer) => startTimer(timer)));
     pauseAllButton.addEventListener("click", () => timers.forEach((timer) => stopTimer(timer)));
     resetAllButton.addEventListener("click", () => timers.forEach((timer) => resetTimer(timer)));
