@@ -120,6 +120,7 @@ h1 {
   border-radius: 14px;
   background: var(--card);
   cursor: grab;
+  transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
 }
 
 .timer-card:active {
@@ -127,11 +128,10 @@ h1 {
 }
 
 .timer-card.is-dragging {
-  opacity: 0.55;
-}
-
-.timer-card.is-drag-over {
-  border-color: var(--accent);
+  opacity: 0.88;
+  transform: translate(-8px, -8px);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.4);
+  cursor: grabbing;
 }
 
 @keyframes timer-blink {

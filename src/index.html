@@ -150,6 +150,32 @@
     let nextTimerId = loadNextTimerId();
     let timers = [];
     let recordingTimer = null;
+    let draggedTimer = null;
+    let reorderLocked = false;
+
+    function animateTimerListReorder(update) {
+      const before = new Map();
+      timerList.querySelectorAll(".timer-card").forEach((card) => {
+        before.set(card.dataset.timerId, card.getBoundingClientRect());
+      });
+
+      update();
+
+      timerList.querySelectorAll(".timer-card").forEach((card) => {
+        const first = before.get(card.dataset.timerId);
+        if (!first) return;
+        const last = card.getBoundingClientRect();
+        const deltaX = first.left - last.left;
+        const deltaY = first.top - last.top;
+        if (!deltaX && !deltaY) return;
+        card.style.transition = "none";
+        card.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+        requestAnimationFrame(() => {
+          card.style.transition = "transform 180ms ease";
+          card.style.transform = "";
+        });
+      });
+    }
 
     function defaultShortcut(timerId) {
       return null;
@@ -356,29 +382,47 @@
           event.preventDefault();
           return;
         }
+        draggedTimer = timer;
         element.classList.add("is-dragging");
         event.dataTransfer.effectAllowed = "move";
         event.dataTransfer.setData("text/plain", String(timer.id));
       });
       element.addEventListener("dragend", () => {
         element.classList.remove("is-dragging");
-        document.querySelectorAll(".timer-card.is-drag-over").forEach((item) => item.classList.remove("is-drag-over"));
+        draggedTimer = null;
       });
       element.addEventListener("dragover", (event) => {
         event.preventDefault();
         event.dataTransfer.dropEffect = "move";
-        if (!element.classList.contains("is-dragging")) element.classList.add("is-drag-over");
+        if (!draggedTimer || draggedTimer === timer || reorderLocked) return;
+        const fromIndex = timers.indexOf(draggedTimer);
+        const toIndex = timers.indexOf(timer);
+        if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
+
+        // Only swap once the cursor crosses partway into this card in the direction
+        // of travel, so hovering near the boundary doesn't flip-flop the order.
+        // Using less than the full midpoint (30%) makes the swap trigger sooner.
+        const rect = element.getBoundingClientRect();
+        const movingDown = fromIndex < toIndex;
+        const triggerY = movingDown ? rect.top + rect.height * 0.3 : rect.top + rect.height * 0.7;
+        if (movingDown && event.clientY < triggerY) return;
+        if (!movingDown && event.clientY > triggerY) return;
+
+        // Lock further swaps until the shift animation settles - mid-animation
+        // rects are still moving, which otherwise causes the order to flicker.
+        reorderLocked = true;
+        setTimeout(() => { reorderLocked = false; }, 200);
+
+        animateTimerListReorder(() => {
+          timers.splice(fromIndex, 1);
+          timers.splice(toIndex, 0, draggedTimer);
+          const draggedElement = getTimerElement(draggedTimer);
+          const referenceElement = movingDown ? element.nextSibling : element;
+          timerList.insertBefore(draggedElement, referenceElement);
+        });
       });
-      element.addEventListener("dragleave", () => element.classList.remove("is-drag-over"));
       element.addEventListener("drop", (event) => {
         event.preventDefault();
-        const draggedId = Number(event.dataTransfer.getData("text/plain"));
-        const fromIndex = timers.findIndex((item) => item.id === draggedId);
-        const toIndex = timers.indexOf(timer);
-        if (fromIndex < 0 || fromIndex === toIndex) return;
-        const [draggedTimer] = timers.splice(fromIndex, 1);
-        timers.splice(toIndex, 0, draggedTimer);
-        renderAllTimers();
         saveTimerIds();
       });
       element.querySelector(".settings-toggle").addEventListener("click", () => settingsModal.showModal());
