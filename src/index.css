@@ -298,6 +298,7 @@ h1 {
 }
 
 .timer-display {
+  position: relative;
   display: grid;
   place-self: center;
   justify-items: center;
@@ -310,6 +311,14 @@ h1 {
   color: var(--ink);
   font: 800 4rem serif;
   letter-spacing: 0;
+}
+
+.timer-ms {
+  position: absolute;
+  right: -30px;
+  bottom: 12px;
+  color: var(--muted);
+  font: 800 1rem sans-serif;
 }
 
 .controls {
