@@ -113,7 +113,7 @@ h1 {
 .timer-card {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(260px, 0.85fr);
+  grid-template-columns: 1fr;
   gap: 12px;
   align-items: center;
   padding: 12px;
@@ -280,6 +280,7 @@ h1 {
 
 .timer-list {
   display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
   gap: 18px;
 }
 
@@ -327,9 +328,27 @@ h1 {
 }
 
 .timer-label {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
   color: var(--ink);
   font-weight: 600;
   font-size: 1rem;
+  white-space: nowrap;
+}
+
+.timer-label-text {
+  display: inline-block;
+}
+
+.timer-label.is-overflowing .timer-label-text {
+  animation: timer-label-marquee 6s ease-in-out infinite;
+}
+
+@keyframes timer-label-marquee {
+  0%, 15% { transform: translateX(0); }
+  50%, 65% { transform: translateX(var(--marquee-distance, 0px)); }
+  100% { transform: translateX(0); }
 }
 
 .global-shortcut {
@@ -354,7 +373,7 @@ h1 {
   color: var(--ink);
   font-family: serif;
   font-weight: 400;
-  font-size: 4rem;
+  font-size: 3.4rem;
   letter-spacing: 0;
 }
 
