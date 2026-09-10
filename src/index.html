@@ -135,7 +135,7 @@
     function loadNextTimerId() {
       let maxUsedId = 0;
       for (let i = 0; i < localStorage.length; i++) {
-        const match = localStorage.key(i)?.match(/^meso-watch-timer-(\d+)-(name|shortcut)$/);
+        const match = localStorage.key(i)?.match(/^meso-watch-timer-(\d+)-(name|shortcut|duration)$/);
         if (match) maxUsedId = Math.max(maxUsedId, Number(match[1]));
       }
       const stored = Number(localStorage.getItem("meso-watch-next-timer-id")) || 0;
@@ -218,12 +218,38 @@
       return `타이머 ${index >= 0 ? index + 1 : timers.length + 1}`;
     }
 
+    function loadDuration(timerId) {
+      const stored = Number(localStorage.getItem(`meso-watch-timer-${timerId}-duration`));
+      return Number.isFinite(stored) && stored > 0 ? stored : null;
+    }
+
+    function saveDuration(timer) {
+      localStorage.setItem(`meso-watch-timer-${timer.id}-duration`, String(timer.totalSeconds));
+    }
+
+    function loadTimerIds() {
+      try {
+        const raw = JSON.parse(localStorage.getItem("meso-watch-timer-ids") || "[]");
+        return Array.isArray(raw) ? raw.filter((id) => Number.isInteger(id)) : [];
+      } catch (error) {
+        return [];
+      }
+    }
+
+    function saveTimerIds() {
+      localStorage.setItem("meso-watch-timer-ids", JSON.stringify(timers.map((timer) => timer.id)));
+    }
+
+    function buildTimer(id, totalSeconds, fallbackIndex = null) {
+      const name = localStorage.getItem(`meso-watch-timer-${id}-name`)
+        || (fallbackIndex === null ? defaultTimerName(null) : `타이머 ${fallbackIndex + 1}`);
+      return { id, name, totalSeconds, remainingSeconds: totalSeconds, timerId: null, shortcut: loadShortcut(id), isDraft: false };
+    }
+
     function createTimer(minutes = 1) {
       const id = nextTimerId;
       setNextTimerId(nextTimerId + 1);
-      const totalSeconds = minutes * 60;
-      const name = localStorage.getItem(`meso-watch-timer-${id}-name`) || defaultTimerName(null);
-      return { id, name, totalSeconds, remainingSeconds: totalSeconds, timerId: null, shortcut: loadShortcut(id), isDraft: false };
+      return buildTimer(id, minutes * 60);
     }
 
     function getTimerElement(timer) {
@@ -337,6 +363,7 @@
         const [draggedTimer] = timers.splice(fromIndex, 1);
         timers.splice(toIndex, 0, draggedTimer);
         renderAllTimers();
+        saveTimerIds();
       });
       element.querySelector(".settings-toggle").addEventListener("click", () => settingsModal.showModal());
       element.querySelector(".modal-close").addEventListener("click", () => {
@@ -345,6 +372,7 @@
         if (timer.isDraft) {
           localStorage.removeItem(`meso-watch-timer-${timer.id}-name`);
           localStorage.removeItem(`meso-watch-timer-${timer.id}-shortcut`);
+          localStorage.removeItem(`meso-watch-timer-${timer.id}-duration`);
           if (timer.id === nextTimerId - 1) setNextTimerId(nextTimerId - 1);
           element.parentElement?.remove();
         }
@@ -357,7 +385,9 @@
           const draftHost = element.parentElement;
           timerList.appendChild(element);
           draftHost?.remove();
+          saveTimerIds();
         }
+        saveDuration(timer);
         saveShortcuts();
         settingsModal.close();
       });
@@ -368,6 +398,7 @@
           settingsModal.close();
           localStorage.removeItem(`meso-watch-timer-${timer.id}-name`);
           localStorage.removeItem(`meso-watch-timer-${timer.id}-shortcut`);
+          localStorage.removeItem(`meso-watch-timer-${timer.id}-duration`);
           if (timer.id === nextTimerId - 1) setNextTimerId(nextTimerId - 1);
           element.parentElement?.remove();
         }
@@ -407,6 +438,7 @@
         resetTimer(timer);
         timer.remainingSeconds = timer.totalSeconds;
         updateTimerElement(timer);
+        if (!timer.isDraft) saveDuration(timer);
       }));
       element.querySelector(".shortcut-button").addEventListener("click", () => {
         recordingTimer = timer;
@@ -492,9 +524,11 @@
       stopTimer(timer);
       localStorage.removeItem(`meso-watch-timer-${timer.id}-name`);
       localStorage.removeItem(`meso-watch-timer-${timer.id}-shortcut`);
+      localStorage.removeItem(`meso-watch-timer-${timer.id}-duration`);
       timers = timers.filter((item) => item !== timer);
       timer.element = null;
       renderAllTimers();
+      saveTimerIds();
       saveShortcuts();
     }
 
@@ -562,6 +596,10 @@
       renderTimer(timer, draftHost);
       draftHost.querySelector(".settings-modal").showModal();
     });
+
+    timers = loadTimerIds().map((id, index) => buildTimer(id, loadDuration(id) ?? 60, index));
+    renderAllTimers();
+    saveShortcuts();
 
     window.electronAPI?.onGlobalRestart(restartTimerById);
   </script>
