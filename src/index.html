@@ -7,6 +7,21 @@
   <link rel="icon" type="image/png" href="../public/meso.png" />
   <link rel="stylesheet" href="color.css" />
   <link rel="stylesheet" href="index.css" />
+  <script>
+    if (window.electronAPI) {
+      const electronStylesheet = document.createElement("link");
+      electronStylesheet.rel = "stylesheet";
+      electronStylesheet.href = "electron.css";
+      document.head.appendChild(electronStylesheet);
+
+      const storedBgOpacity = Number(localStorage.getItem("meso-watch-bg-opacity"));
+      const storedPanelOpacity = Number(localStorage.getItem("meso-watch-panel-opacity"));
+      const bgOpacity = Number.isFinite(storedBgOpacity) && storedBgOpacity >= 0 && storedBgOpacity <= 100 ? storedBgOpacity : 0;
+      const panelOpacity = Number.isFinite(storedPanelOpacity) && storedPanelOpacity >= 0 && storedPanelOpacity <= 100 ? storedPanelOpacity : 75;
+      document.documentElement.style.setProperty("--bg-opacity", bgOpacity / 100);
+      document.documentElement.style.setProperty("--panel-opacity", panelOpacity / 100);
+    }
+  </script>
 </head>
 <body>
   <main>
@@ -24,6 +39,8 @@
           <input class="volume-slider" id="volumeSlider" type="range" min="0" max="100" step="1" aria-label="알림 음량" />
         </div>
         <button class="primary add-timer" id="addTimerButton" type="button" aria-label="타이머 추가"></button>
+        <button class="settings-toggle screen-settings-button" id="screenSettingsButton" type="button" aria-label="화면 설정"></button>
+        <button class="settings-toggle close-button" id="closeButton" type="button" aria-label="닫기"></button>
       </div>
     </header>
     <div class="global-controls" aria-label="전체 타이머 제어">
@@ -46,12 +63,86 @@
     </div>
   </dialog>
 
+  <dialog class="settings-modal" id="screenSettingsDialog" aria-label="화면 설정">
+    <div class="settings-modal-header">
+      <span class="section-title">화면 설정</span>
+    </div>
+    <div class="opacity-setting">
+      <div class="opacity-setting-header">
+        <span class="control-label">배경 투명도</span>
+        <span class="duration-hint" id="bgOpacityValue"></span>
+      </div>
+      <input class="opacity-slider" id="bgOpacitySlider" type="range" min="0" max="100" step="1" aria-label="배경 투명도" />
+    </div>
+    <div class="opacity-setting">
+      <div class="opacity-setting-header">
+        <span class="control-label">버튼 투명도</span>
+        <span class="duration-hint" id="panelOpacityValue"></span>
+      </div>
+      <input class="opacity-slider" id="panelOpacitySlider" type="range" min="0" max="100" step="1" aria-label="버튼 투명도" />
+    </div>
+    <div class="settings-actions">
+      <button class="primary" id="screenSettingsCloseButton" type="button">닫기</button>
+    </div>
+  </dialog>
+
   <script type="module">
     import { createIconElement } from "./svg/icons.js";
 
     const timerList = document.getElementById("timerList");
     const addTimerButton = document.getElementById("addTimerButton");
     addTimerButton.appendChild(createIconElement("alarm-clock-plus", { width: 18, height: 18 }));
+    const closeButton = document.getElementById("closeButton");
+    if (window.electronAPI) {
+      closeButton.appendChild(createIconElement("x", { width: 18, height: 18 }));
+      closeButton.addEventListener("click", () => window.close());
+    }
+
+    function loadOpacity(key, fallback) {
+      const stored = Number(localStorage.getItem(key));
+      return Number.isFinite(stored) && stored >= 0 && stored <= 100 ? stored : fallback;
+    }
+
+    let bgOpacity = loadOpacity("meso-watch-bg-opacity", 0);
+    let panelOpacity = loadOpacity("meso-watch-panel-opacity", 75);
+
+    function applyOpacity() {
+      document.documentElement.style.setProperty("--bg-opacity", bgOpacity / 100);
+      document.documentElement.style.setProperty("--panel-opacity", panelOpacity / 100);
+      bgOpacityValue.textContent = `${bgOpacity}%`;
+      panelOpacityValue.textContent = `${panelOpacity}%`;
+    }
+
+    function setBgOpacity(value) {
+      bgOpacity = Math.min(100, Math.max(0, value));
+      localStorage.setItem("meso-watch-bg-opacity", String(bgOpacity));
+      applyOpacity();
+    }
+
+    function setPanelOpacity(value) {
+      panelOpacity = Math.min(100, Math.max(0, value));
+      localStorage.setItem("meso-watch-panel-opacity", String(panelOpacity));
+      applyOpacity();
+    }
+
+    const screenSettingsButton = document.getElementById("screenSettingsButton");
+    const screenSettingsDialog = document.getElementById("screenSettingsDialog");
+    const screenSettingsCloseButton = document.getElementById("screenSettingsCloseButton");
+    const bgOpacitySlider = document.getElementById("bgOpacitySlider");
+    const panelOpacitySlider = document.getElementById("panelOpacitySlider");
+    const bgOpacityValue = document.getElementById("bgOpacityValue");
+    const panelOpacityValue = document.getElementById("panelOpacityValue");
+    if (window.electronAPI) {
+      screenSettingsButton.appendChild(createIconElement("settings", { width: 18, height: 18 }));
+      bgOpacitySlider.value = bgOpacity;
+      panelOpacitySlider.value = panelOpacity;
+      applyOpacity();
+      screenSettingsButton.addEventListener("click", () => screenSettingsDialog.showModal());
+      screenSettingsCloseButton.addEventListener("click", () => screenSettingsDialog.close());
+      bgOpacitySlider.addEventListener("input", (event) => setBgOpacity(Number(event.target.value)));
+      panelOpacitySlider.addEventListener("input", (event) => setPanelOpacity(Number(event.target.value)));
+    }
+
     const volumeControl = document.getElementById("volumeControl");
     const volumeSlider = document.getElementById("volumeSlider");
     const volumeToggleButton = document.getElementById("volumeToggleButton");

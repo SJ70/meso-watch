@@ -1,0 +1,25 @@
+header {
+  -webkit-app-region: drag;
+  justify-content: flex-end;
+}
+
+.title-row {
+  display: none;
+}
+
+.header-actions {
+  -webkit-app-region: no-drag;
+}
+
+.close-button,
+.screen-settings-button {
+  display: inline-flex;
+  background: color-mix(in srgb, var(--paper) calc(var(--panel-opacity) * 100%), transparent);
+}
+
+.close-button:hover,
+.close-button:focus-visible {
+  color: var(--ink);
+  background: var(--accent-dark);
+  border-color: var(--accent-dark);
+}

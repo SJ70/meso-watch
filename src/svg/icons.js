@@ -8,7 +8,8 @@ const ICON_NAMES = [
   "trash",
   "volume-1",
   "volume-2",
-  "volume-x"
+  "volume-x",
+  "x"
 ];
 
 const icons = new Map();

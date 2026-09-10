@@ -6,5 +6,7 @@
   --accent: #e85d3f;
   --accent-dark: #bd3d26;
   --mint: #b9d8c2;
-  --line: #414b56;
+  --line: rgba(255, 255, 255, 0.16);
+  --bg-opacity: 1;
+  --panel-opacity: 1;
 }
