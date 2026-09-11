@@ -84,7 +84,8 @@
       <input class="opacity-slider" id="panelOpacitySlider" type="range" min="0" max="100" step="1" aria-label="버튼 투명도" />
     </div>
     <div class="settings-actions">
-      <button class="primary" id="screenSettingsCloseButton" type="button">닫기</button>
+      <button class="secondary" id="screenSettingsCancelButton" type="button">취소</button>
+      <button class="primary" id="screenSettingsConfirmButton" type="button">확인</button>
     </div>
   </dialog>
 
@@ -116,29 +117,35 @@
 
     let bgOpacity = loadOpacity("meso-watch-bg-opacity", 0);
     let panelOpacity = loadOpacity("meso-watch-panel-opacity", 75);
+    let committedBgOpacity = bgOpacity;
+    let committedPanelOpacity = panelOpacity;
 
-    function applyOpacity() {
+    function previewOpacity() {
       document.documentElement.style.setProperty("--bg-opacity", bgOpacity / 100);
       document.documentElement.style.setProperty("--panel-opacity", panelOpacity / 100);
       bgOpacityValue.textContent = `${bgOpacity}%`;
       panelOpacityValue.textContent = `${panelOpacity}%`;
     }
 
-    function setBgOpacity(value) {
-      bgOpacity = Math.min(100, Math.max(0, value));
+    function saveOpacity() {
       localStorage.setItem("meso-watch-bg-opacity", String(bgOpacity));
-      applyOpacity();
+      localStorage.setItem("meso-watch-panel-opacity", String(panelOpacity));
+      committedBgOpacity = bgOpacity;
+      committedPanelOpacity = panelOpacity;
     }
 
-    function setPanelOpacity(value) {
-      panelOpacity = Math.min(100, Math.max(0, value));
-      localStorage.setItem("meso-watch-panel-opacity", String(panelOpacity));
-      applyOpacity();
+    function revertOpacity() {
+      bgOpacity = committedBgOpacity;
+      panelOpacity = committedPanelOpacity;
+      bgOpacitySlider.value = bgOpacity;
+      panelOpacitySlider.value = panelOpacity;
+      previewOpacity();
     }
 
     const screenSettingsButton = document.getElementById("screenSettingsButton");
     const screenSettingsDialog = document.getElementById("screenSettingsDialog");
-    const screenSettingsCloseButton = document.getElementById("screenSettingsCloseButton");
+    const screenSettingsCancelButton = document.getElementById("screenSettingsCancelButton");
+    const screenSettingsConfirmButton = document.getElementById("screenSettingsConfirmButton");
     const bgOpacitySlider = document.getElementById("bgOpacitySlider");
     const panelOpacitySlider = document.getElementById("panelOpacitySlider");
     const bgOpacityValue = document.getElementById("bgOpacityValue");
@@ -147,11 +154,31 @@
       screenSettingsButton.appendChild(createIconElement("settings", { width: 18, height: 18 }));
       bgOpacitySlider.value = bgOpacity;
       panelOpacitySlider.value = panelOpacity;
-      applyOpacity();
-      screenSettingsButton.addEventListener("click", () => screenSettingsDialog.showModal());
-      screenSettingsCloseButton.addEventListener("click", () => screenSettingsDialog.close());
-      bgOpacitySlider.addEventListener("input", (event) => setBgOpacity(Number(event.target.value)));
-      panelOpacitySlider.addEventListener("input", (event) => setPanelOpacity(Number(event.target.value)));
+      previewOpacity();
+      screenSettingsButton.addEventListener("click", () => {
+        committedBgOpacity = bgOpacity;
+        committedPanelOpacity = panelOpacity;
+        bgOpacitySlider.value = bgOpacity;
+        panelOpacitySlider.value = panelOpacity;
+        screenSettingsDialog.showModal();
+      });
+      screenSettingsConfirmButton.addEventListener("click", () => {
+        saveOpacity();
+        screenSettingsDialog.close();
+      });
+      screenSettingsCancelButton.addEventListener("click", () => {
+        revertOpacity();
+        screenSettingsDialog.close();
+      });
+      screenSettingsDialog.addEventListener("cancel", () => revertOpacity());
+      bgOpacitySlider.addEventListener("input", (event) => {
+        bgOpacity = Math.min(100, Math.max(0, Number(event.target.value)));
+        previewOpacity();
+      });
+      panelOpacitySlider.addEventListener("input", (event) => {
+        panelOpacity = Math.min(100, Math.max(0, Number(event.target.value)));
+        previewOpacity();
+      });
     }
 
     const volumeControl = document.getElementById("volumeControl");
@@ -241,7 +268,8 @@
 
     let nextTimerId = loadNextTimerId();
     let timers = [];
-    let recordingTimer = null;
+    let recordingDraft = null;
+    let recordingElement = null;
     let draggedTimer = null;
     let reorderLocked = false;
 
@@ -384,7 +412,8 @@
       if (!element) return;
       element.querySelector(".timer-time").textContent = formatTime(timer.remainingSeconds);
       element.querySelector(".timer-ms").textContent = formatMs(timer.remainingMs);
-      if (recordingTimer !== timer) {
+      const settingsModalOpen = element.querySelector(".settings-modal")?.open;
+      if (recordingElement !== element && !settingsModalOpen) {
         element.querySelector(".shortcut-button").value = formatShortcut(timer.shortcut);
       }
       element.querySelector(".timer-shortcut-badge").textContent = formatShortcut(timer.shortcut);
@@ -463,6 +492,14 @@
         </dialog>`;
 
       const settingsModal = element.querySelector(".settings-modal");
+      let draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut };
+      function resetDraftFromTimer() {
+        draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut };
+        element.querySelector(".name-input").value = timer.name;
+        element.querySelector(".minutes-input").value = Math.floor(timer.totalMs / 60000);
+        element.querySelector(".seconds-input").value = Math.floor(timer.totalMs / 1000) % 60;
+        element.querySelector(".shortcut-button").value = formatShortcut(timer.shortcut);
+      }
       element.querySelector(".settings-toggle").appendChild(createIconElement("settings", { width: 16, height: 16 }));
       element.querySelector(".remove-button").appendChild(createIconElement("trash", { width: 16, height: 16 }));
       element.querySelector(".start-button").appendChild(createIconElement("play", { width: 16, height: 16 }));
@@ -517,9 +554,13 @@
         event.preventDefault();
         saveTimerIds();
       });
-      element.querySelector(".settings-toggle").addEventListener("click", () => settingsModal.showModal());
+      element.querySelector(".settings-toggle").addEventListener("click", () => {
+        resetDraftFromTimer();
+        settingsModal.showModal();
+      });
       element.querySelector(".modal-close").addEventListener("click", () => {
-        cancelShortcutRecording(timer);
+        cancelShortcutRecording();
+        resetDraftFromTimer();
         settingsModal.close();
         if (timer.isDraft) {
           localStorage.removeItem(`meso-watch-timer-${timer.id}-name`);
@@ -530,7 +571,14 @@
         }
       });
       element.querySelector(".modal-save").addEventListener("click", () => {
-        cancelShortcutRecording(timer);
+        cancelShortcutRecording();
+        const durationChanged = draft.totalMs !== timer.totalMs;
+        timer.name = draft.name;
+        timer.totalMs = draft.totalMs;
+        timer.shortcut = draft.shortcut;
+        localStorage.setItem(`meso-watch-timer-${timer.id}-name`, timer.name);
+        element.querySelector(".timer-label").textContent = timer.name;
+        if (durationChanged) resetTimer(timer);
         if (timer.isDraft) {
           timer.isDraft = false;
           timers.push(timer);
@@ -541,10 +589,12 @@
         }
         saveDuration(timer);
         saveShortcuts();
+        updateTimerElement(timer);
         settingsModal.close();
       });
       settingsModal.addEventListener("cancel", (event) => {
-        cancelShortcutRecording(timer);
+        cancelShortcutRecording();
+        resetDraftFromTimer();
         if (timer.isDraft) {
           event.preventDefault();
           settingsModal.close();
@@ -556,10 +606,8 @@
         }
       });
       element.querySelector(".name-input").addEventListener("change", (event) => {
-        timer.name = event.target.value.trim() || defaultTimerName(timer);
-        event.target.value = timer.name;
-        localStorage.setItem(`meso-watch-timer-${timer.id}-name`, timer.name);
-        element.querySelector(".timer-label").textContent = timer.name;
+        draft.name = event.target.value.trim() || defaultTimerName(timer);
+        event.target.value = draft.name;
       });
       const durationInputMax = (input) => (input.classList.contains("seconds-input") ? 59 : 60);
       element.querySelectorAll(".duration-input").forEach((input) => input.addEventListener("input", (event) => {
@@ -581,27 +629,22 @@
         if (totalSeconds === 0) {
           minutesInput.value = 0;
           secondsInput.value = 1;
-          timer.totalMs = 1000;
+          draft.totalMs = 1000;
         } else {
           minutesInput.value = minutes;
           secondsInput.value = seconds;
-          timer.totalMs = totalSeconds * 1000;
+          draft.totalMs = totalSeconds * 1000;
         }
-        resetTimer(timer);
-        updateTimerElement(timer);
-        if (!timer.isDraft) saveDuration(timer);
       }));
       element.querySelectorAll(".duration-preset").forEach((button) => button.addEventListener("click", () => {
         const ms = Number(button.dataset.ms);
-        timer.totalMs = ms;
+        draft.totalMs = ms;
         element.querySelector(".minutes-input").value = Math.floor(ms / 60000);
         element.querySelector(".seconds-input").value = Math.floor(ms / 1000) % 60;
-        resetTimer(timer);
-        updateTimerElement(timer);
-        if (!timer.isDraft) saveDuration(timer);
       }));
       element.querySelector(".shortcut-button").addEventListener("click", () => {
-        recordingTimer = timer;
+        recordingDraft = draft;
+        recordingElement = element;
         const shortcutButton = element.querySelector(".shortcut-button");
         shortcutButton.classList.add("is-setting-shortcut");
         shortcutButton.value = "원하는 키를 입력하세요 (Esc: 제거)";
@@ -718,39 +761,28 @@
       if (timer) restartTimer(timer);
     }
 
-    function cancelShortcutRecording(timer) {
-      if (recordingTimer !== timer) return;
-      recordingTimer = null;
-      const element = getTimerElement(timer);
-      if (!element) return;
-      const shortcutButton = element.querySelector(".shortcut-button");
+    function cancelShortcutRecording() {
+      if (recordingDraft === null) return;
+      const shortcutButton = recordingElement.querySelector(".shortcut-button");
       shortcutButton.classList.remove("is-setting-shortcut");
       shortcutButton.blur();
-      shortcutButton.value = formatShortcut(timer.shortcut);
+      shortcutButton.value = formatShortcut(recordingDraft.shortcut);
+      recordingDraft = null;
+      recordingElement = null;
     }
 
     window.addEventListener("keydown", (event) => {
-      if (recordingTimer !== null) {
+      if (recordingDraft !== null) {
         event.preventDefault();
-        const timer = recordingTimer;
-        const element = getTimerElement(timer);
-        if (event.key === "Escape") {
-          timer.shortcut = null;
-          recordingTimer = null;
-          const shortcutButton = element.querySelector(".shortcut-button");
-          shortcutButton.classList.remove("is-setting-shortcut");
-          shortcutButton.blur();
-          updateTimerElement(timer);
-          saveShortcuts();
-          return;
-        }
-        timer.shortcut = { key: event.key.toLowerCase(), code: event.code, ctrlKey: event.ctrlKey, altKey: event.altKey, shiftKey: event.shiftKey, metaKey: event.metaKey };
-        recordingTimer = null;
-        const shortcutButton = element.querySelector(".shortcut-button");
+        const shortcutButton = recordingElement.querySelector(".shortcut-button");
+        recordingDraft.shortcut = event.key === "Escape"
+          ? null
+          : { key: event.key.toLowerCase(), code: event.code, ctrlKey: event.ctrlKey, altKey: event.altKey, shiftKey: event.shiftKey, metaKey: event.metaKey };
         shortcutButton.classList.remove("is-setting-shortcut");
         shortcutButton.blur();
-        updateTimerElement(timer);
-        saveShortcuts();
+        shortcutButton.value = formatShortcut(recordingDraft.shortcut);
+        recordingDraft = null;
+        recordingElement = null;
         return;
       }
 
