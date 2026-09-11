@@ -22,11 +22,12 @@
       "public/**/*"
     ],
     "win": {
-      "target": "nsis",
-      "icon": "public/meso.png"
+      "target": "portable",
+      "icon": "public/meso.png",
+      "requestedExecutionLevel": "requireAdministrator"
     }
   },
   "dependencies": {
-    "uiohook-napi": "^1.5.5"
+    "koffi": "^3.2.1"
   }
 }

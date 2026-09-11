@@ -1,9 +1,18 @@
 const path = require("node:path");
+const { Worker } = require("node:worker_threads");
 const { app, BrowserWindow, ipcMain, screen } = require("electron");
-const { uIOhook, UiohookKey } = require("uiohook-napi");
+const koffi = require("koffi");
 
 let mainWindow = null;
 let observedShortcuts = [];
+let rawInputWorker = null;
+let rawInputThreadId = null;
+
+const user32 = koffi.load("user32.dll");
+const PostThreadMessageW = user32.func(
+  "bool __stdcall PostThreadMessageW(uint32 idThread, uint32 msg, void *wParam, void *lParam)"
+);
+const WM_QUIT = 0x0012;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -33,31 +42,40 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, "..", "src", "index.html"));
 }
 
-function keycodeFromShortcut(shortcut) {
-  const code = shortcut.code;
-  const letter = /^Key([A-Z])$/.exec(code);
-  if (letter) return UiohookKey[letter[1]];
+function startRawInputWorker() {
+  rawInputWorker = new Worker(path.join(__dirname, "rawInputDaemon.js"));
 
-  const digit = /^Digit([0-9])$/.exec(code);
-  if (digit) return UiohookKey[digit[1]];
+  rawInputWorker.on("message", (event) => {
+    if (event?.type === "started") {
+      rawInputThreadId = event.threadId;
+      return;
+    }
+    if (event?.type !== "keydown") return;
 
-  const codeAliases = {
-    ControlLeft: "Ctrl",
-    ControlRight: "CtrlRight",
-    AltLeft: "Alt",
-    AltRight: "AltRight",
-    ShiftLeft: "Shift",
-    ShiftRight: "ShiftRight",
-    MetaLeft: "Meta",
-    MetaRight: "MetaRight",
-  };
-  return UiohookKey[codeAliases[code] || code];
+    const matchedShortcut = observedShortcuts.find((item) => event.code === item.shortcut.code
+      && event.ctrlKey === item.shortcut.ctrlKey
+      && event.altKey === item.shortcut.altKey
+      && event.shiftKey === item.shortcut.shiftKey
+      && event.metaKey === item.shortcut.metaKey);
+    if (matchedShortcut) mainWindow?.webContents.send("global-restart", matchedShortcut.id);
+  });
+
+  rawInputWorker.on("error", (error) => {
+    console.error("raw input worker error:", error);
+  });
+}
+
+function stopRawInputWorker() {
+  if (!rawInputWorker) return;
+  // GetMessageW blocks the worker's own event loop, so a plain postMessage() can't
+  // reach it until a Windows message arrives; PostThreadMessageW wakes it directly.
+  if (rawInputThreadId != null) PostThreadMessageW(rawInputThreadId, WM_QUIT, null, null);
+  rawInputWorker.terminate();
+  rawInputWorker = null;
 }
 
 ipcMain.handle("set-global-shortcuts", (_event, shortcuts) => {
-  observedShortcuts = shortcuts
-    .map((item) => ({ ...item, keycode: keycodeFromShortcut(item.shortcut) }))
-    .filter((item) => item.keycode);
+  observedShortcuts = shortcuts.filter((item) => item.shortcut?.code);
   return true;
 });
 
@@ -71,18 +89,9 @@ ipcMain.on("resize-to-content", (_event, contentHeight) => {
   mainWindow.setBounds({ x: bounds.x, y: bounds.y, width: bounds.width, height });
 });
 
-uIOhook.on("keydown", (event) => {
-  const matchedShortcut = observedShortcuts.find((item) => event.keycode === item.keycode
-    && event.ctrlKey === item.shortcut.ctrlKey
-    && event.altKey === item.shortcut.altKey
-    && event.shiftKey === item.shortcut.shiftKey
-    && event.metaKey === item.shortcut.metaKey);
-  if (matchedShortcut) mainWindow?.webContents.send("global-restart", matchedShortcut.id);
-});
-
 app.whenReady().then(() => {
   createWindow();
-  uIOhook.start();
+  startRawInputWorker();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
@@ -90,7 +99,7 @@ app.whenReady().then(() => {
 });
 
 app.on("will-quit", () => {
-  uIOhook.stop();
+  stopRawInputWorker();
 });
 
 app.on("window-all-closed", () => {
