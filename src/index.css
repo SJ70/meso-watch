@@ -157,7 +157,7 @@ h1 {
   inset: 0;
   z-index: 2;
   border-radius: 13px;
-  background: rgba(255, 255, 255, 0.5);
+  background: #fff;
   content: "";
   pointer-events: none;
   animation: timer-blink 1s linear infinite;
