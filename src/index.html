@@ -342,12 +342,20 @@
 
       if (shortcut.key === " " || shortcut.key === "space" || shortcut.key === "spacebar") return "Spacebar";
 
+      const arrowSymbols = {
+        arrowup: "↑",
+        arrowdown: "↓",
+        arrowleft: "←",
+        arrowright: "→"
+      };
+
       const modifiers = [];
       if (shortcut.ctrlKey) modifiers.push("Ctrl");
       if (shortcut.altKey) modifiers.push("Alt");
       if (shortcut.shiftKey) modifiers.push("Shift");
       if (shortcut.metaKey) modifiers.push("Meta");
-      return [...modifiers, shortcut.key.toUpperCase()].join(" + ");
+      const keyLabel = arrowSymbols[shortcut.key] || shortcut.key.toUpperCase();
+      return [...modifiers, keyLabel].join(" + ");
     }
 
     function formatTime(seconds) {
