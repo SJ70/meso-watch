@@ -181,7 +181,8 @@ h1 {
   transition: opacity 160ms ease;
 }
 
-.timer-card.is-running > .timer-progress-ring {
+.timer-card.is-running > .timer-progress-ring,
+.timer-card.has-progress > .timer-progress-ring {
   opacity: 1;
 }
 

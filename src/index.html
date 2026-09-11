@@ -419,6 +419,7 @@
       element.querySelector(".timer-shortcut-badge").textContent = formatShortcut(timer.shortcut);
       element.classList.toggle("is-running", Boolean(timer.timerId));
       element.classList.toggle("is-finished", Boolean(timer.isFinished));
+      element.classList.toggle("has-progress", timer.remainingMs < timer.totalMs);
       const progress = timer.totalMs > 0 ? timer.remainingMs / timer.totalMs : 0;
       element.style.setProperty("--progress-fraction", progress);
       element.querySelector(".start-button").disabled = Boolean(timer.timerId);
