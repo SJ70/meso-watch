@@ -14,8 +14,10 @@
       electronStylesheet.href = "electron.css";
       document.head.appendChild(electronStylesheet);
 
-      const storedBgOpacity = Number(localStorage.getItem("meso-watch-bg-opacity"));
-      const storedPanelOpacity = Number(localStorage.getItem("meso-watch-panel-opacity"));
+      const rawBgOpacity = localStorage.getItem("meso-watch-bg-opacity");
+      const rawPanelOpacity = localStorage.getItem("meso-watch-panel-opacity");
+      const storedBgOpacity = rawBgOpacity === null ? NaN : Number(rawBgOpacity);
+      const storedPanelOpacity = rawPanelOpacity === null ? NaN : Number(rawPanelOpacity);
       const bgOpacity = Number.isFinite(storedBgOpacity) && storedBgOpacity >= 0 && storedBgOpacity <= 100 ? storedBgOpacity : 0;
       const panelOpacity = Number.isFinite(storedPanelOpacity) && storedPanelOpacity >= 0 && storedPanelOpacity <= 100 ? storedPanelOpacity : 75;
       document.documentElement.style.setProperty("--bg-opacity", bgOpacity / 100);
@@ -106,7 +108,9 @@
     }
 
     function loadOpacity(key, fallback) {
-      const stored = Number(localStorage.getItem(key));
+      const raw = localStorage.getItem(key);
+      if (raw === null) return fallback;
+      const stored = Number(raw);
       return Number.isFinite(stored) && stored >= 0 && stored <= 100 ? stored : fallback;
     }
 
