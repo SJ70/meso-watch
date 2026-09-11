@@ -12,7 +12,7 @@ body {
 main {
   width: min(100% - 32px, 820px);
   margin: 0 auto;
-  padding: 8px 0 12px;
+  padding: 16px 0 16px;
 }
 
 header {
