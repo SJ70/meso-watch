@@ -31,54 +31,8 @@ header {
   gap: 8px;
 }
 
-.add-timer.primary {
-  display: inline-flex;
+.add-timer {
   flex: 0 0 auto;
-  align-items: center;
-  justify-content: center;
-  padding: 12px;
-  border: 1px solid transparent;
-  border-radius: 10px;
-}
-
-.volume-control {
-  display: flex;
-  align-items: center;
-  padding: 8px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--card) calc(var(--panel-opacity) * 100%), transparent);
-}
-
-.volume-toggle {
-  padding: 4px;
-  color: var(--ink);
-  background: transparent;
-  font-size: 1rem;
-  line-height: 1;
-}
-
-.volume-toggle:hover,
-.volume-toggle:focus-visible {
-  transform: none;
-  color: var(--accent);
-}
-
-.volume-slider {
-  width: 0;
-  margin-left: 0;
-  opacity: 0;
-  accent-color: var(--accent);
-  cursor: pointer;
-  pointer-events: none;
-  transition: width 160ms ease, opacity 160ms ease, margin-left 160ms ease;
-}
-
-.volume-control.is-open .volume-slider {
-  width: 90px;
-  margin-left: 8px;
-  opacity: 1;
-  pointer-events: auto;
 }
 
 .title-row {
@@ -657,16 +611,25 @@ button:disabled {
   background: #303b47;
 }
 
+.add-timer,
 .close-button,
 .screen-settings-button {
-  display: none;
+  background: color-mix(in srgb, var(--paper) calc(var(--panel-opacity) * 100%), transparent);
+}
+
+.add-timer,
+.close-button,
+.screen-settings-button {
   padding: 12px;
   border-radius: 10px;
 }
 
+.close-button {
+  display: none;
+}
+
 .opacity-setting {
   display: grid;
-  gap: 6px;
   margin-bottom: 16px;
 }
 
@@ -676,6 +639,7 @@ button:disabled {
 
 .opacity-setting .control-label {
   margin-bottom: 0;
+  margin-left: 2px;
 }
 
 .opacity-setting-header {

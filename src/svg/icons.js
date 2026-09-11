@@ -6,9 +6,6 @@ const ICON_NAMES = [
   "settings",
   "square",
   "trash",
-  "volume-1",
-  "volume-2",
-  "volume-x",
   "x"
 ];
 
