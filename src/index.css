@@ -12,7 +12,7 @@ body {
 main {
   width: min(100% - 32px, 820px);
   margin: 0 auto;
-  padding: 16px 0 16px;
+  padding: 8px 0 12px;
 }
 
 header {
@@ -20,7 +20,7 @@ header {
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .header-actions {
@@ -28,7 +28,7 @@ header {
   flex: 0 0 auto;
   align-items: center;
   align-self: flex-end;
-  gap: 12px;
+  gap: 8px;
 }
 
 .add-timer.primary {
@@ -84,12 +84,12 @@ header {
 .title-row {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 5px;
 }
 
 .app-logo {
-  width: 64px;
-  height: 64px;
+  width: 48px;
+  height: 48px;
   flex: 0 0 auto;
   image-rendering: pixelated;
 }
@@ -97,16 +97,28 @@ header {
 h1 {
   margin: 0;
   color: var(--accent);
-  font-size: 2.5rem;
+  font-size: 1.6rem;
   line-height: 0.9;
   letter-spacing: -0.06em;
+  margin: 4px 0 0;
+}
+
+.version-tag {
+  position: relative;
+  top: 5px;
+  margin-left: 6px;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 0.6rem;
+  letter-spacing: 0;
+  vertical-align: middle;
 }
 
 .subtitle {
-  margin: 12px 0 0;
+  margin: 8px 0 0;
   color: var(--muted);
   font-weight: 700;
-  font-size: 0.9rem;
+  font-size: 0.75rem;
   line-height: 1.2;
 }
 
@@ -283,14 +295,14 @@ h1 {
 .timer-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 18px;
+  gap: 8px;
 }
 
 .global-controls {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
 .global-action {

@@ -31,7 +31,7 @@
       <div class="title-row">
         <img class="app-logo" src="../public/meso.png" alt="" />
         <div>
-          <h1>메소워치</h1>
+          <h1>메소워치<span class="version-tag" id="versionTag"></span></h1>
           <p class="subtitle">메이플스토리 재획 타이머</p>
         </div>
       </div>
@@ -95,6 +95,13 @@
     const timerList = document.getElementById("timerList");
     const addTimerButton = document.getElementById("addTimerButton");
     addTimerButton.appendChild(createIconElement("alarm-clock-plus", { width: 18, height: 18 }));
+
+    fetch("../package.json")
+      .then((response) => response.json())
+      .then((data) => {
+        document.getElementById("versionTag").textContent = `v ${data.version}`;
+      })
+      .catch(() => {});
 
     if (window.electronAPI) {
       const contentResizeObserver = new ResizeObserver((entries) => {
