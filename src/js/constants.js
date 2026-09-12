@@ -6,7 +6,7 @@ export const TIMER_ICON_NAMES = [
   "exp.png",
   "sol-janus.png",
   "hexa-booster.webp",
-  "eruption.png",
+  "rune.png",
   "river.png",
 ];
 
