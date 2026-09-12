@@ -13,6 +13,15 @@ header {
   display: none;
 }
 
+.electron-version-tag {
+  display: inline-block;
+  align-self: flex-end;
+  margin-right: auto;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.7rem;
+}
+
 .header-actions,
 .global-controls,
 .timer-card,

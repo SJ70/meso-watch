@@ -25,6 +25,7 @@ fetch("../package.json")
   .then((response) => response.json())
   .then((data) => {
     document.getElementById("versionTag").textContent = `v ${data.version}`;
+    document.getElementById("electronVersionTag").textContent = `v ${data.version}`;
   })
   .catch(() => {});
 

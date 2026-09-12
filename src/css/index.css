@@ -89,6 +89,10 @@ header {
   margin-bottom: 10px;
 }
 
+.electron-version-tag {
+  display: none;
+}
+
 .header-actions {
   display: flex;
   flex: 0 0 auto;
