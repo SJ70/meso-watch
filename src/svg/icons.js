@@ -1,5 +1,6 @@
 const ICON_NAMES = [
   "alarm-clock-plus",
+  "chevron-down",
   "pause",
   "play",
   "rotate-ccw-clock",

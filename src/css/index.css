@@ -698,6 +698,55 @@ button:disabled {
   margin-left: 0;
 }
 
+.volume-setting {
+  margin-bottom: 8px;
+}
+
+.alarm-type-setting {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 3px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.alarm-type-setting .control-label {
+  margin-bottom: 0;
+}
+
+.select-wrapper {
+  position: relative;
+}
+
+.select-wrapper svg {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  color: var(--ink);
+  pointer-events: none;
+}
+
+.alarm-type-select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 28px 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--ink);
+  background: #303b47;
+  font-weight: 700;
+  font-size: 0.78rem;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.alarm-type-select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 .opacity-setting-header {
   display: flex;
   align-items: baseline;

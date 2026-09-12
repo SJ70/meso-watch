@@ -9,9 +9,11 @@ import {
   DEFAULT_MASTER_VOLUME,
   DEFAULT_TIMER_VOLUME,
   DEFAULT_TIMER_MINUTES,
+  ALARM_TYPES,
+  DEFAULT_ALARM_TYPE,
 } from "./constants.js";
 import { requestResize, openDialog, registerDialogShrinkOnClose } from "./dialog-utils.js";
-import { playNotifySound, effectiveVolume, notifyDone, stopAlarm } from "./sound.js";
+import { previewAlarmSound, effectiveVolume, notifyDone, stopAlarm } from "./sound.js";
 import { formatShortcut, NORMALIZE_MODIFIER_CODE } from "./shortcuts.js";
 
 const timerList = document.getElementById("timerList");
@@ -151,7 +153,7 @@ function setVolume(value) {
 }
 
 masterVolumeSlider.addEventListener("input", (event) => setVolume(Number(event.target.value)));
-masterVolumeSlider.addEventListener("change", () => playNotifySound(volume));
+masterVolumeSlider.addEventListener("change", () => previewAlarmSound(volume));
 updateVolumeUi();
 
 function loadNextTimerId() {
@@ -285,10 +287,15 @@ function loadTimerVolume(id) {
   return Number.isFinite(stored) && stored >= 0 && stored <= 100 ? stored : DEFAULT_TIMER_VOLUME;
 }
 
+function loadTimerAlarmType(id) {
+  const stored = localStorage.getItem(`meso-watch-timer-${id}-alarm-type`);
+  return ALARM_TYPES.some((alarmType) => alarmType.id === stored) ? stored : DEFAULT_ALARM_TYPE;
+}
+
 function buildTimer(id, totalMs, fallbackIndex = null) {
   const name = localStorage.getItem(`meso-watch-timer-${id}-name`)
     || (fallbackIndex === null ? defaultTimerName(null) : `타이머 ${fallbackIndex + 1}`);
-  return { id, name, totalMs, remainingSeconds: Math.floor(totalMs / 1000), remainingMs: totalMs, timerId: null, alarmIntervalId: null, shortcut: loadShortcut(id), icon: loadTimerIcon(id), volume: loadTimerVolume(id), isDraft: false };
+  return { id, name, totalMs, remainingSeconds: Math.floor(totalMs / 1000), remainingMs: totalMs, timerId: null, alarmIntervalId: null, shortcut: loadShortcut(id), icon: loadTimerIcon(id), volume: loadTimerVolume(id), alarmType: loadTimerAlarmType(id), isDraft: false };
 }
 
 function createTimer(minutes = DEFAULT_TIMER_MINUTES) {
@@ -378,9 +385,13 @@ function renderTimer(timer, target = timerList) {
           <button class="duration-preset" type="button" data-ms="1800000">30분</button>
         </div>
       </div>
-      <div class="shortcut-setting timer-shortcut-setting">
-        <span class="control-label">재시작 단축키</span>
-        <input class="shortcut-input shortcut-button" type="text" readonly autocomplete="off" aria-label="타이머 ${timer.id} 단축키 설정" value="${escapeHtml(formatShortcut(timer.shortcut))}" />
+      <div class="alarm-type-setting">
+        <span class="control-label">알람음</span>
+        <div class="select-wrapper">
+          <select class="alarm-type-select" aria-label="타이머 ${timer.id} 알람음">
+            ${ALARM_TYPES.map((alarmType) => `<option value="${alarmType.id}"${alarmType.id === timer.alarmType ? " selected" : ""}>${alarmType.label}</option>`).join("")}
+          </select>
+        </div>
       </div>
       <div class="opacity-setting volume-setting">
         <div class="opacity-setting-header">
@@ -401,6 +412,10 @@ function renderTimer(timer, target = timerList) {
           `).join("")}
         </div>
       </div>
+      <div class="shortcut-setting timer-shortcut-setting">
+        <span class="control-label">재시작 단축키</span>
+        <input class="shortcut-input shortcut-button" type="text" readonly autocomplete="off" aria-label="타이머 ${timer.id} 단축키 설정" value="${escapeHtml(formatShortcut(timer.shortcut))}" />
+      </div>
       <div class="settings-actions">
         <button class="secondary modal-close" type="button">취소</button>
         <button class="primary modal-save" type="button">${timer.isDraft ? "완료" : "저장"}</button>
@@ -409,7 +424,7 @@ function renderTimer(timer, target = timerList) {
 
   const settingsModal = element.querySelector(".settings-modal");
   registerDialogShrinkOnClose(settingsModal);
-  let draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon, volume: timer.volume };
+  let draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon, volume: timer.volume, alarmType: timer.alarmType };
   function updateIconOptionsUi() {
     element.querySelectorAll(".icon-option").forEach((button) => {
       button.classList.toggle("is-selected", button.dataset.icon === draft.icon);
@@ -421,14 +436,18 @@ function renderTimer(timer, target = timerList) {
     slider.value = draft.volume;
     valueDisplay.textContent = `마스터 볼륨의 ${draft.volume}%`;
   }
+  function updateAlarmTypeSettingUi() {
+    element.querySelector(".alarm-type-select").value = draft.alarmType;
+  }
   function resetDraftFromTimer() {
-    draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon, volume: timer.volume };
+    draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon, volume: timer.volume, alarmType: timer.alarmType };
     element.querySelector(".name-input").value = timer.name;
     element.querySelector(".minutes-input").value = Math.floor(timer.totalMs / 60000);
     element.querySelector(".seconds-input").value = Math.floor(timer.totalMs / 1000) % 60;
     element.querySelector(".shortcut-button").value = formatShortcut(timer.shortcut);
     updateIconOptionsUi();
     updateVolumeSettingUi();
+    updateAlarmTypeSettingUi();
   }
   element.querySelectorAll(".icon-option").forEach((button) => button.addEventListener("click", () => {
     draft.icon = button.dataset.icon;
@@ -439,8 +458,13 @@ function renderTimer(timer, target = timerList) {
     updateVolumeSettingUi();
   });
   element.querySelector(".volume-slider-input").addEventListener("change", (event) => {
-    playNotifySound(effectiveVolume(volume, Number(event.target.value)));
+    previewAlarmSound(effectiveVolume(volume, Number(event.target.value)), draft.alarmType);
   });
+  element.querySelector(".alarm-type-select").addEventListener("change", (event) => {
+    draft.alarmType = event.target.value;
+    previewAlarmSound(effectiveVolume(volume, draft.volume), draft.alarmType);
+  });
+  element.querySelector(".select-wrapper").appendChild(createIconElement("chevron-down", { width: 16, height: 16 }));
   element.querySelector(".settings-toggle").appendChild(createIconElement("settings", { width: 16, height: 16 }));
   element.querySelector(".remove-button").appendChild(createIconElement("trash", { width: 16, height: 16 }));
   element.querySelector(".start-button").appendChild(createIconElement("play", { width: 16, height: 16 }));
@@ -509,6 +533,7 @@ function renderTimer(timer, target = timerList) {
       localStorage.removeItem(`meso-watch-timer-${timer.id}-duration`);
       localStorage.removeItem(`meso-watch-timer-${timer.id}-icon`);
       localStorage.removeItem(`meso-watch-timer-${timer.id}-volume`);
+      localStorage.removeItem(`meso-watch-timer-${timer.id}-alarm-type`);
       if (timer.id === nextTimerId - 1) setNextTimerId(nextTimerId - 1);
       element.parentElement?.remove();
     }
@@ -521,9 +546,11 @@ function renderTimer(timer, target = timerList) {
     timer.shortcut = draft.shortcut;
     timer.icon = draft.icon;
     timer.volume = draft.volume;
+    timer.alarmType = draft.alarmType;
     localStorage.setItem(`meso-watch-timer-${timer.id}-name`, timer.name);
     localStorage.setItem(`meso-watch-timer-${timer.id}-icon`, timer.icon);
     localStorage.setItem(`meso-watch-timer-${timer.id}-volume`, String(timer.volume));
+    localStorage.setItem(`meso-watch-timer-${timer.id}-alarm-type`, timer.alarmType);
     element.querySelector(".timer-label").textContent = timer.name;
     element.style.setProperty("--timer-icon", timerIconUrl(timer));
     if (durationChanged) resetTimer(timer);
@@ -551,6 +578,7 @@ function renderTimer(timer, target = timerList) {
       localStorage.removeItem(`meso-watch-timer-${timer.id}-duration`);
       localStorage.removeItem(`meso-watch-timer-${timer.id}-icon`);
       localStorage.removeItem(`meso-watch-timer-${timer.id}-volume`);
+      localStorage.removeItem(`meso-watch-timer-${timer.id}-alarm-type`);
       if (timer.id === nextTimerId - 1) setNextTimerId(nextTimerId - 1);
       element.parentElement?.remove();
     }
@@ -623,7 +651,7 @@ function tickTimer(timer) {
     timer.remainingMs = 0;
     timer.isFinished = true;
     updateTimerElement(timer);
-    notifyDone(timer, volume);
+    notifyDone(timer, () => volume);
     return;
   }
   updateTimerElement(timer);
@@ -670,6 +698,7 @@ function removeTimer(timer) {
   localStorage.removeItem(`meso-watch-timer-${timer.id}-duration`);
   localStorage.removeItem(`meso-watch-timer-${timer.id}-icon`);
   localStorage.removeItem(`meso-watch-timer-${timer.id}-volume`);
+  localStorage.removeItem(`meso-watch-timer-${timer.id}-alarm-type`);
   timers = timers.filter((item) => item !== timer);
   timer.element = null;
   renderAllTimers();
