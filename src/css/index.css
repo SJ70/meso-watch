@@ -3,6 +3,8 @@
 * { box-sizing: border-box; font-family: inherit; }
 
 body {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
   margin: 0;
   color: var(--ink);
@@ -11,6 +13,7 @@ body {
 
 main {
   width: min(100% - 32px, 820px);
+  flex: 1 0 auto;
   margin: 0 auto;
   padding: 16px 0 16px;
 }
@@ -47,6 +50,35 @@ main {
 .app-promo-download:hover,
 .app-promo-download:focus-visible {
   background: #f2f2f2;
+}
+
+.app-footer {
+  padding: 16px;
+  text-align: center;
+}
+
+.app-disclaimer {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.62rem;
+  line-height: 1.4;
+  opacity: 0.4;
+}
+
+.app-footer a {
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.7rem;
+  text-decoration: none;
+  opacity: 0.4;
+  transition: opacity 160ms ease;
+}
+
+.app-footer a:hover,
+.app-footer a:focus-visible {
+  opacity: 1;
+  text-decoration: underline;
 }
 
 header {
