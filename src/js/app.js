@@ -136,7 +136,9 @@ confirmDialog.addEventListener("cancel", () => {
 });
 
 function loadVolume() {
-  const stored = Number(localStorage.getItem("meso-watch-volume"));
+  const raw = localStorage.getItem("meso-watch-volume");
+  if (raw === null) return DEFAULT_MASTER_VOLUME;
+  const stored = Number(raw);
   return Number.isFinite(stored) && stored >= 0 && stored <= 100 ? stored : DEFAULT_MASTER_VOLUME;
 }
 
