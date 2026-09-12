@@ -250,7 +250,12 @@ function defaultTimerName(timer) {
 }
 
 function timerIconUrl(timer) {
-  return timer.icon === NO_ICON ? "none" : `url("../public/icons/${timer.icon}")`;
+  if (timer.icon === NO_ICON) return "none";
+  // Absolute, not relative: a url() inside a custom property resolves against
+  // the stylesheet that consumes it via var() (src/css/index.css), not the
+  // document, so a relative path here breaks if that file ever moves again.
+  const href = new URL(`../public/icons/${timer.icon}`, document.baseURI).href;
+  return `url("${href}")`;
 }
 
 function loadDuration(timerId) {
@@ -307,6 +312,24 @@ function createTimer(minutes = DEFAULT_TIMER_MINUTES) {
 function getTimerElement(timer) {
   if (timer.element?.isConnected) return timer.element;
   return timerList.querySelector(`[data-timer-id="${timer.id}"]`);
+}
+
+function bounceTimerCard(timer) {
+  const element = getTimerElement(timer);
+  if (!element) return;
+  // A low jump under gravity: ease-out rising to each peak (decelerating
+  // against gravity), ease-in falling back down (accelerating into it),
+  // with a small secondary bounce so it settles instead of stopping dead.
+  element.animate(
+    [
+      { transform: "translateY(0)", offset: 0, easing: "ease-out" },
+      { transform: "translateY(-8px)", offset: 0.4, easing: "ease-in" },
+      { transform: "translateY(0)", offset: 0.7, easing: "ease-out" },
+      { transform: "translateY(-2px)", offset: 0.88, easing: "ease-in" },
+      { transform: "translateY(0)", offset: 1 },
+    ],
+    { duration: 380 }
+  );
 }
 
 function updateTimerElement(timer) {
@@ -583,6 +606,16 @@ function renderTimer(timer, target = timerList) {
       element.parentElement?.remove();
     }
   });
+  settingsModal.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" || recordingDraft !== null) return;
+    const target = event.target;
+    if (target.tagName === "BUTTON" || target.tagName === "SELECT") return;
+    event.preventDefault();
+    // Commit whatever's still in the focused field before saving - typing
+    // Enter doesn't itself fire "change" the way blurring the field would.
+    if (target.matches(".duration-input, .name-input")) target.dispatchEvent(new Event("change"));
+    element.querySelector(".modal-save").click();
+  });
   element.querySelector(".name-input").addEventListener("change", (event) => {
     draft.name = event.target.value.trim() || defaultTimerName(timer);
     event.target.value = draft.name;
@@ -651,7 +684,7 @@ function tickTimer(timer) {
     timer.remainingMs = 0;
     timer.isFinished = true;
     updateTimerElement(timer);
-    notifyDone(timer, () => volume);
+    notifyDone(timer, () => volume, () => bounceTimerCard(timer));
     return;
   }
   updateTimerElement(timer);

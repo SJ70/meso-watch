@@ -93,11 +93,14 @@ export function effectiveVolume(masterVolume, timerVolume) {
   return Math.round(masterVolume * (timerVolume / 100));
 }
 
-export function notifyDone(timer, getMasterVolume) {
+export function notifyDone(timer, getMasterVolume, onBeep) {
   // Read timer.volume/alarmType and the master volume fresh on every beep,
   // not just once at start, so changing the volume while the alarm is
   // already repeating takes effect on the next beep instead of the next timer.
-  const play = () => playNotifySound(effectiveVolume(getMasterVolume(), timer.volume), timer.alarmType);
+  const play = () => {
+    playNotifySound(effectiveVolume(getMasterVolume(), timer.volume), timer.alarmType);
+    onBeep?.();
+  };
   play();
   timer.alarmIntervalId = setInterval(play, 1000);
 }
