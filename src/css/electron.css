@@ -7,7 +7,8 @@ header {
   justify-content: flex-end;
 }
 
-.title-row {
+.title-row,
+.app-promo-banner {
   display: none;
 }
 
