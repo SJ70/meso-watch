@@ -15,6 +15,7 @@
   <link rel="icon" type="image/png" href="../public/logo.png" />
   <link rel="stylesheet" href="css/color.css" />
   <link rel="stylesheet" href="css/index.css" />
+  <script src="js/opacity-defaults.js"></script>
   <script>
     if (window.electronAPI) {
       const electronStylesheet = document.createElement("link");
@@ -22,12 +23,13 @@
       electronStylesheet.href = "css/electron.css";
       document.head.appendChild(electronStylesheet);
 
+      const defaults = window.mesoWatchOpacityDefaults;
       const rawBgOpacity = localStorage.getItem("meso-watch-bg-opacity");
       const rawPanelOpacity = localStorage.getItem("meso-watch-panel-opacity");
       const storedBgOpacity = rawBgOpacity === null ? NaN : Number(rawBgOpacity);
       const storedPanelOpacity = rawPanelOpacity === null ? NaN : Number(rawPanelOpacity);
-      const bgOpacity = Number.isFinite(storedBgOpacity) && storedBgOpacity >= 0 && storedBgOpacity <= 100 ? storedBgOpacity : 0;
-      const panelOpacity = Number.isFinite(storedPanelOpacity) && storedPanelOpacity >= 0 && storedPanelOpacity <= 100 ? storedPanelOpacity : 75;
+      const bgOpacity = Number.isFinite(storedBgOpacity) && storedBgOpacity >= 0 && storedBgOpacity <= 100 ? storedBgOpacity : defaults.bgOpacityElectron;
+      const panelOpacity = Number.isFinite(storedPanelOpacity) && storedPanelOpacity >= 0 && storedPanelOpacity <= 100 ? storedPanelOpacity : defaults.panelOpacityElectron;
       document.documentElement.style.setProperty("--bg-opacity", bgOpacity / 100);
       document.documentElement.style.setProperty("--panel-opacity", panelOpacity / 100);
     }

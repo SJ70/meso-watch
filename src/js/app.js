@@ -2,10 +2,6 @@ import { createIconElement } from "../svg/icons.js";
 import {
   NO_ICON,
   TIMER_ICON_NAMES,
-  DEFAULT_BG_OPACITY_ELECTRON,
-  DEFAULT_PANEL_OPACITY_ELECTRON,
-  DEFAULT_BG_OPACITY_WEB,
-  DEFAULT_PANEL_OPACITY_WEB,
   DEFAULT_MASTER_VOLUME,
   DEFAULT_TIMER_VOLUME,
   DEFAULT_TIMER_MINUTES,
@@ -48,8 +44,9 @@ function loadOpacity(key, fallback) {
   return Number.isFinite(stored) && stored >= 0 && stored <= 100 ? stored : fallback;
 }
 
-let bgOpacity = loadOpacity("meso-watch-bg-opacity", window.electronAPI ? DEFAULT_BG_OPACITY_ELECTRON : DEFAULT_BG_OPACITY_WEB);
-let panelOpacity = loadOpacity("meso-watch-panel-opacity", window.electronAPI ? DEFAULT_PANEL_OPACITY_ELECTRON : DEFAULT_PANEL_OPACITY_WEB);
+const opacityDefaults = window.mesoWatchOpacityDefaults;
+let bgOpacity = loadOpacity("meso-watch-bg-opacity", window.electronAPI ? opacityDefaults.bgOpacityElectron : opacityDefaults.bgOpacityWeb);
+let panelOpacity = loadOpacity("meso-watch-panel-opacity", window.electronAPI ? opacityDefaults.panelOpacityElectron : opacityDefaults.panelOpacityWeb);
 let committedBgOpacity = bgOpacity;
 let committedPanelOpacity = panelOpacity;
 
