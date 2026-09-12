@@ -17,7 +17,7 @@ const WM_QUIT = 0x0012;
 function createWindow() {
   mainWindow = new BrowserWindow({
     title: "메소워치",
-    icon: path.join(__dirname, "..", "public", "meso.png"),
+    icon: path.join(__dirname, "..", "public", "logo.png"),
     width: 800,
     resizable: false,
     transparent: true,

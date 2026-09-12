@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+
+  <path d="M 0 0 L -30 0 A 30 30 0 0 1 30 0 Z"
+      fill="#e85d3f" stroke="#e85d3f" stroke-width="12" stroke-linejoin="round" stroke-linecap="round"
+      transform="translate(56, 56) rotate(-38) scale(1.35)"
+  />
+  <path d="M 0 0 L -30 0 A 30 30 0 0 1 30 0 Z"
+      fill="#e85d3f" stroke="#e85d3f" stroke-width="12" stroke-linejoin="round" stroke-linecap="round"
+      transform="translate(200, 56) rotate(38) scale(1.35)"
+  />
+
+  <rect x="-8" y="-18" width="16" height="36" rx="8" ry="8"
+    fill="#e85d3f"
+    transform="translate(128, 32) rotate(90)"
+  />
+
+  <rect x="-12" y="-30" width="24" height="60" rx="12" ry="12"
+    fill="#e85d3f"
+    transform="translate(64, 224) rotate(45)"
+  />
+  <rect x="-12" y="-30" width="24" height="60" rx="12" ry="12"
+    fill="#e85d3f"
+    transform="translate(192, 224) rotate(135)"
+  />
+
+  <circle cx="128" cy="150" r="100" fill="#e85d3f" />
+  <circle cx="128" cy="150" r="75" fill="#ffffff" />
+
+  <path d="M 9.37 -97.97 Q 0 -110 -9.37 -97.97 L -17.40 -87.66 Q -26.76 -75.63 -31.14 -61.44 
+           L -39.25 -35.08 L -74.20 -39.19 Q -93.02 -41.40 -98.06 -39.40 L -102.39 -37.68 
+           Q -107.44 -35.67 -108.66 -32.80 L -109.70 -30.33 Q -110.92 -27.45 -106.35 -14.95 
+           L -102.45 -4.23 Q -97.88 8.27 -86.25 17.98 L -64.65 36.01 L -69.02 69.33 
+           Q -71.37 87.27 -69.45 89.30 L -67.81 91.04 Q -65.90 93.07 -62.19 93.02 
+           L -59.02 92.97 Q -55.31 92.92 -40.82 85.20 L -13.92 70.85 L -9.45 73.47 
+           L -8.76 90.79 Q -8.39 100.11 -5.45 103.57 L -2.94 106.54 Q 0 110 2.94 106.54 
+           L 5.45 103.57 Q 8.39 100.11 8.76 90.79 L 9.45 73.47 L 13.92 70.85 
+           L 40.82 85.20 Q 55.31 92.92 59.02 92.97 L 62.19 93.02 Q 65.90 93.07 67.81 91.04 
+           L 69.45 89.30 Q 71.37 87.27 69.02 69.33 L 64.65 36.01 L 86.25 17.98 
+           Q 97.88 8.27 102.45 -4.23 L 106.35 -14.95 Q 110.92 -27.45 109.70 -30.33 
+           L 108.66 -32.80 Q 107.44 -35.67 102.39 -37.68 L 98.06 -39.40 Q 93.02 -41.40 74.20 -39.19 
+           L 39.25 -35.08 L 31.14 -61.44 Q 26.76 -75.63 17.40 -87.66 Z"
+    fill="#ffc25d" stroke="#ffc25d" stroke-width="16" stroke-linejoin="round" stroke-linecap="round"
+    transform="translate(128, 146) scale(0.525, 0.525)"
+  />
+        
+</svg>

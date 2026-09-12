@@ -29,7 +29,7 @@
     ],
     "win": {
       "target": "portable",
-      "icon": "public/meso.png",
+      "icon": "public/logo.png",
       "requestedExecutionLevel": "requireAdministrator"
     },
     "publish": {
