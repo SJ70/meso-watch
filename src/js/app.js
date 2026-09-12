@@ -325,7 +325,7 @@ function updateTimerElement(timer) {
   const progress = timer.totalMs > 0 ? timer.remainingMs / timer.totalMs : 0;
   element.style.setProperty("--progress-fraction", progress);
   element.querySelector(".start-button").disabled = Boolean(timer.timerId);
-  element.querySelector(".pause-button").disabled = !timer.timerId;
+  element.querySelector(".pause-button").disabled = !timer.timerId && !timer.isFinished;
 }
 
 function renderTimer(timer, target = timerList) {
@@ -627,8 +627,8 @@ function renderTimer(timer, target = timerList) {
     shortcutButton.classList.add("is-setting-shortcut");
     shortcutButton.value = "원하는 키를 입력하세요 (Esc: 제거)";
   });
-  element.querySelector(".start-button").addEventListener("click", () => startTimer(timer));
-  element.querySelector(".pause-button").addEventListener("click", () => stopTimer(timer));
+  element.querySelector(".start-button").addEventListener("click", () => (timer.isFinished ? restartTimer(timer) : startTimer(timer)));
+  element.querySelector(".pause-button").addEventListener("click", () => (timer.isFinished ? resetTimer(timer) : stopTimer(timer)));
   element.querySelector(".reset-button").addEventListener("click", () => resetTimer(timer));
   element.querySelector(".restart-button").addEventListener("click", () => restartTimer(timer));
   element.querySelector(".remove-button").addEventListener("click", () => confirmDeleteTimer(timer));

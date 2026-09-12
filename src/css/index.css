@@ -647,6 +647,22 @@ button:disabled {
   background: #303b47;
 }
 
+.timer-card:not(.is-running):not(.is-finished) .start-button,
+.timer-card.is-finished .reset-button {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.timer-card:not(.is-running):not(.is-finished) .start-button:hover,
+.timer-card:not(.is-running):not(.is-finished) .start-button:focus-visible,
+.timer-card.is-finished .reset-button:hover,
+.timer-card.is-finished .reset-button:focus-visible {
+  color: #fff;
+  background: var(--accent-dark);
+  border-color: var(--accent-dark);
+}
+
 .settings-toggle {
   display: inline-flex;
   align-items: center;
