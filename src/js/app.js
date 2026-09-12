@@ -11,6 +11,7 @@ import {
   DEFAULT_TIMER_MINUTES,
   ALARM_TYPES,
   DEFAULT_ALARM_TYPE,
+  DEFAULT_TIMERS,
 } from "./constants.js";
 import { requestResize, openDialog, registerDialogShrinkOnClose } from "./dialog-utils.js";
 import { previewAlarmSound, effectiveVolume, notifyDone, stopAlarm } from "./sound.js";
@@ -307,6 +308,20 @@ function createTimer(minutes = DEFAULT_TIMER_MINUTES) {
   const id = nextTimerId;
   setNextTimerId(nextTimerId + 1);
   return buildTimer(id, minutes * 60000);
+}
+
+function seedDefaultTimersIfNeeded() {
+  if (localStorage.getItem("meso-watch-defaults-seeded")) return [];
+  localStorage.setItem("meso-watch-defaults-seeded", "1");
+  return DEFAULT_TIMERS.map((defaults) => {
+    const id = nextTimerId;
+    setNextTimerId(nextTimerId + 1);
+    localStorage.setItem(`meso-watch-timer-${id}-name`, defaults.name);
+    localStorage.setItem(`meso-watch-timer-${id}-duration`, String(defaults.totalMs));
+    localStorage.setItem(`meso-watch-timer-${id}-icon`, defaults.icon);
+    localStorage.setItem(`meso-watch-timer-${id}-alarm-type`, defaults.alarmType);
+    return buildTimer(id, defaults.totalMs);
+  });
 }
 
 function getTimerElement(timer) {
@@ -794,7 +809,13 @@ addTimerButton.addEventListener("click", () => {
   openDialog(draftHost.querySelector(".settings-modal"));
 });
 
-timers = loadTimerIds().map((id, index) => buildTimer(id, loadDuration(id) ?? 60000, index));
+const initialTimerIds = loadTimerIds();
+if (initialTimerIds.length > 0) {
+  timers = initialTimerIds.map((id, index) => buildTimer(id, loadDuration(id) ?? 60000, index));
+} else {
+  timers = seedDefaultTimersIfNeeded();
+  saveTimerIds();
+}
 renderAllTimers();
 saveShortcuts();
 

@@ -32,3 +32,10 @@ export const ALARM_TYPES = [
   { id: "siren", label: "사이렌" },
 ];
 export const DEFAULT_ALARM_TYPE = ALARM_TYPES[0].id;
+
+// Seeded once for a fresh install (see meso-watch-defaults-seeded in app.js).
+export const DEFAULT_TIMERS = [
+  { name: "몬스터 리젠", totalMs: 7500, alarmType: "beep", icon: "attack.png" },
+  { name: "야누스 설치", totalMs: 70000, alarmType: "bell", icon: "sol-janus.png" },
+  { name: "경험치 버프", totalMs: 1800000, alarmType: "alert", icon: "exp.png" },
+];
