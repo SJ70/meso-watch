@@ -11,6 +11,20 @@ function scheduleTone(audioContext, { frequency, type = "sine", startTime, durat
   oscillator.stop(startTime + duration);
 }
 
+function scheduleSweep(audioContext, { startFrequency, endFrequency, type = "sawtooth", startTime, duration, peakGain }) {
+  const oscillator = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  oscillator.connect(gain);
+  gain.connect(audioContext.destination);
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(startFrequency, startTime);
+  oscillator.frequency.linearRampToValueAtTime(endFrequency, startTime + duration);
+  gain.gain.setValueAtTime(peakGain, startTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+  oscillator.start(startTime);
+  oscillator.stop(startTime + duration);
+}
+
 // keys must match the ids in ALARM_TYPES in constants.js
 const ALARM_PATTERNS = {
   beep(audioContext, peakGain) {
@@ -29,6 +43,25 @@ const ALARM_PATTERNS = {
   },
   bell(audioContext, peakGain) {
     scheduleTone(audioContext, { frequency: 988, type: "triangle", startTime: audioContext.currentTime, duration: 0.9, peakGain });
+  },
+  ping(audioContext, peakGain) {
+    scheduleTone(audioContext, { frequency: 1200, type: "sine", startTime: audioContext.currentTime, duration: 0.15, peakGain });
+  },
+  double(audioContext, peakGain) {
+    const now = audioContext.currentTime;
+    scheduleTone(audioContext, { frequency: 660, type: "sine", startTime: now, duration: 0.15, peakGain });
+    scheduleTone(audioContext, { frequency: 660, type: "sine", startTime: now + 0.22, duration: 0.15, peakGain });
+  },
+  arpeggio(audioContext, peakGain) {
+    const now = audioContext.currentTime;
+    [440, 554.37, 659.25].forEach((frequency, index) => {
+      scheduleTone(audioContext, { frequency, type: "triangle", startTime: now + index * 0.12, duration: 0.2, peakGain });
+    });
+  },
+  siren(audioContext, peakGain) {
+    const now = audioContext.currentTime;
+    scheduleSweep(audioContext, { startFrequency: 440, endFrequency: 880, type: "sawtooth", startTime: now, duration: 0.3, peakGain: peakGain * 0.6 });
+    scheduleSweep(audioContext, { startFrequency: 880, endFrequency: 440, type: "sawtooth", startTime: now + 0.3, duration: 0.3, peakGain: peakGain * 0.6 });
   },
 };
 

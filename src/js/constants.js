@@ -26,5 +26,9 @@ export const ALARM_TYPES = [
   { id: "chime", label: "차임벨" },
   { id: "alert", label: "경고음" },
   { id: "bell", label: "종소리" },
+  { id: "ping", label: "핑" },
+  { id: "double", label: "더블비프" },
+  { id: "arpeggio", label: "아르페지오" },
+  { id: "siren", label: "사이렌" },
 ];
 export const DEFAULT_ALARM_TYPE = ALARM_TYPES[0].id;
