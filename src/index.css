@@ -94,6 +94,21 @@ h1 {
   cursor: grabbing;
 }
 
+.timer-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background-image: var(--timer-icon, none);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 128px 128px;
+  image-rendering: pixelated;
+  opacity: 0.1;
+  pointer-events: none;
+}
+
 .timer-card.is-dragging {
   opacity: 0.88;
   transform: translate(-8px, -8px);
@@ -114,6 +129,12 @@ h1 {
   background: #fff;
   content: "";
   pointer-events: none;
+  animation: timer-blink 1s linear infinite;
+}
+
+.timer-card.is-finished::before {
+  z-index: 3;
+  opacity: 1;
   animation: timer-blink 1s linear infinite;
 }
 
@@ -196,7 +217,7 @@ h1 {
 }
 
 .settings-modal {
-  width: min(100% - 32px, 320px);
+  width: min(100% - 32px, 356px);
   padding: 12px;
   color: var(--ink);
   background: var(--card);
@@ -507,6 +528,7 @@ h1 {
   text-align: center;
   cursor: pointer;
   caret-color: transparent;
+  margin-bottom: 10px;
 }
 
 .shortcut-input:hover {
@@ -521,6 +543,55 @@ h1 {
   border-color: var(--accent);
   outline: 3px solid rgba(232, 93, 63, 0.2);
   color: var(--accent);
+}
+
+.icon-setting {
+  margin-bottom: 10px;
+}
+
+.icon-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.icon-option {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.icon-option:hover,
+.icon-option:focus-visible {
+  background: #303b47;
+}
+
+.icon-option.is-selected {
+  border-color: var(--accent);
+}
+
+.icon-option img {
+  display: block;
+  width: 32px;
+  height: 32px;
+  image-rendering: pixelated;
+}
+
+.icon-option-none {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.62rem;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 button {

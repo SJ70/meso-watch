@@ -359,6 +359,21 @@
       return `타이머 ${index >= 0 ? index + 1 : timers.length + 1}`;
     }
 
+    const NO_ICON = "none";
+    const TIMER_ICON_NAMES = [
+      NO_ICON,
+      "attack.png",
+      "exp.png",
+      "sol-janus.png",
+      "hexa-booster.webp",
+      "eruption.png",
+      "river.png",
+    ];
+
+    function timerIconUrl(timer) {
+      return timer.icon === NO_ICON ? "none" : `url("../public/icons/${timer.icon}")`;
+    }
+
     function loadDuration(timerId) {
       const stored = Number(localStorage.getItem(`meso-watch-timer-${timerId}-duration`));
       return Number.isFinite(stored) && stored > 0 ? stored : null;
@@ -381,10 +396,15 @@
       localStorage.setItem("meso-watch-timer-ids", JSON.stringify(timers.map((timer) => timer.id)));
     }
 
+    function loadTimerIcon(id) {
+      const stored = localStorage.getItem(`meso-watch-timer-${id}-icon`);
+      return TIMER_ICON_NAMES.includes(stored) ? stored : NO_ICON;
+    }
+
     function buildTimer(id, totalMs, fallbackIndex = null) {
       const name = localStorage.getItem(`meso-watch-timer-${id}-name`)
         || (fallbackIndex === null ? defaultTimerName(null) : `타이머 ${fallbackIndex + 1}`);
-      return { id, name, totalMs, remainingSeconds: Math.floor(totalMs / 1000), remainingMs: totalMs, timerId: null, alarmIntervalId: null, shortcut: loadShortcut(id), isDraft: false };
+      return { id, name, totalMs, remainingSeconds: Math.floor(totalMs / 1000), remainingMs: totalMs, timerId: null, alarmIntervalId: null, shortcut: loadShortcut(id), icon: loadTimerIcon(id), isDraft: false };
     }
 
     function createTimer(minutes = 1) {
@@ -422,6 +442,7 @@
       element.className = "timer-card";
       element.draggable = true;
       element.dataset.timerId = timer.id;
+      element.style.setProperty("--timer-icon", timerIconUrl(timer));
       timer.element = element;
       element.innerHTML = `
         <svg class="timer-progress-ring" aria-hidden="true"><rect pathLength="1" /></svg>
@@ -477,6 +498,18 @@
             <span class="control-label">재시작 단축키</span>
             <input class="shortcut-input shortcut-button" type="text" readonly autocomplete="off" aria-label="타이머 ${timer.id} 단축키 설정" value="${escapeHtml(formatShortcut(timer.shortcut))}" />
           </div>
+          <div class="icon-setting">
+            <span class="control-label">아이콘</span>
+            <div class="icon-options" role="group" aria-label="타이머 ${timer.id} 아이콘 선택">
+              ${TIMER_ICON_NAMES.map((name) => name === NO_ICON ? `
+                <button class="icon-option icon-option-none${name === timer.icon ? " is-selected" : ""}" type="button" data-icon="${name}" aria-label="아이콘 없음">없음</button>
+              ` : `
+                <button class="icon-option${name === timer.icon ? " is-selected" : ""}" type="button" data-icon="${name}" aria-label="${name.replace(/\.(png|webp)$/, "")} 아이콘">
+                  <img src="../public/icons/${name}" alt="" />
+                </button>
+              `).join("")}
+            </div>
+          </div>
           <div class="settings-actions">
             <button class="secondary modal-close" type="button">취소</button>
             <button class="primary modal-save" type="button">${timer.isDraft ? "완료" : "저장"}</button>
@@ -484,14 +517,24 @@
         </dialog>`;
 
       const settingsModal = element.querySelector(".settings-modal");
-      let draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut };
+      let draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon };
+      function updateIconOptionsUi() {
+        element.querySelectorAll(".icon-option").forEach((button) => {
+          button.classList.toggle("is-selected", button.dataset.icon === draft.icon);
+        });
+      }
       function resetDraftFromTimer() {
-        draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut };
+        draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon };
         element.querySelector(".name-input").value = timer.name;
         element.querySelector(".minutes-input").value = Math.floor(timer.totalMs / 60000);
         element.querySelector(".seconds-input").value = Math.floor(timer.totalMs / 1000) % 60;
         element.querySelector(".shortcut-button").value = formatShortcut(timer.shortcut);
+        updateIconOptionsUi();
       }
+      element.querySelectorAll(".icon-option").forEach((button) => button.addEventListener("click", () => {
+        draft.icon = button.dataset.icon;
+        updateIconOptionsUi();
+      }));
       element.querySelector(".settings-toggle").appendChild(createIconElement("settings", { width: 16, height: 16 }));
       element.querySelector(".remove-button").appendChild(createIconElement("trash", { width: 16, height: 16 }));
       element.querySelector(".start-button").appendChild(createIconElement("play", { width: 16, height: 16 }));
@@ -558,6 +601,7 @@
           localStorage.removeItem(`meso-watch-timer-${timer.id}-name`);
           localStorage.removeItem(`meso-watch-timer-${timer.id}-shortcut`);
           localStorage.removeItem(`meso-watch-timer-${timer.id}-duration`);
+          localStorage.removeItem(`meso-watch-timer-${timer.id}-icon`);
           if (timer.id === nextTimerId - 1) setNextTimerId(nextTimerId - 1);
           element.parentElement?.remove();
         }
@@ -568,8 +612,11 @@
         timer.name = draft.name;
         timer.totalMs = draft.totalMs;
         timer.shortcut = draft.shortcut;
+        timer.icon = draft.icon;
         localStorage.setItem(`meso-watch-timer-${timer.id}-name`, timer.name);
+        localStorage.setItem(`meso-watch-timer-${timer.id}-icon`, timer.icon);
         element.querySelector(".timer-label").textContent = timer.name;
+        element.style.setProperty("--timer-icon", timerIconUrl(timer));
         if (durationChanged) resetTimer(timer);
         if (timer.isDraft) {
           timer.isDraft = false;
@@ -593,6 +640,7 @@
           localStorage.removeItem(`meso-watch-timer-${timer.id}-name`);
           localStorage.removeItem(`meso-watch-timer-${timer.id}-shortcut`);
           localStorage.removeItem(`meso-watch-timer-${timer.id}-duration`);
+          localStorage.removeItem(`meso-watch-timer-${timer.id}-icon`);
           if (timer.id === nextTimerId - 1) setNextTimerId(nextTimerId - 1);
           element.parentElement?.remove();
         }
@@ -735,6 +783,7 @@
       localStorage.removeItem(`meso-watch-timer-${timer.id}-name`);
       localStorage.removeItem(`meso-watch-timer-${timer.id}-shortcut`);
       localStorage.removeItem(`meso-watch-timer-${timer.id}-duration`);
+      localStorage.removeItem(`meso-watch-timer-${timer.id}-icon`);
       timers = timers.filter((item) => item !== timer);
       timer.element = null;
       renderAllTimers();
