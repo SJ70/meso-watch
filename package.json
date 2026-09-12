@@ -2,6 +2,7 @@
   "name": "meso-watch",
   "version": "1.0.0",
   "private": true,
+  "license": "GPL-3.0",
   "main": "electron/main.js",
   "repository": {
     "type": "git",
