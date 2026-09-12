@@ -775,14 +775,29 @@ function cancelShortcutRecording() {
   recordingElement = null;
 }
 
+// Korean keyboards' right Alt/Ctrl double as IME toggles (한/영, 한자).
+// Chromium reports pressing them with the toggle's own key name and the
+// modifier flag left false, even though the user physically pressed
+// Alt/Ctrl. Raw Input (used to actually trigger shortcuts in Electron) reads
+// the real hardware key and reports an ordinary Alt/Ctrl press instead, so
+// recording has to correct for the mismatch here or the shortcut can never
+// match. The web build has no Raw Input trigger path - both recording and
+// triggering see the same browser-level value there, so it's left alone.
+const IME_MODIFIER_OVERRIDE = {
+  hangulmode: { key: "alt", code: "AltLeft", ctrlKey: false, altKey: true, shiftKey: false, metaKey: false },
+  hanjamode: { key: "control", code: "ControlLeft", ctrlKey: true, altKey: false, shiftKey: false, metaKey: false },
+};
+
 window.addEventListener("keydown", (event) => {
   if (recordingDraft !== null) {
     event.preventDefault();
     const shortcutButton = recordingElement.querySelector(".shortcut-button");
+    const lowerKey = event.key.toLowerCase();
     const code = window.electronAPI ? (NORMALIZE_MODIFIER_CODE[event.code] || event.code) : event.code;
+    const imeOverride = window.electronAPI ? IME_MODIFIER_OVERRIDE[lowerKey] : null;
     recordingDraft.shortcut = event.key === "Escape"
       ? null
-      : { key: event.key.toLowerCase(), code, ctrlKey: event.ctrlKey, altKey: event.altKey, shiftKey: event.shiftKey, metaKey: event.metaKey };
+      : imeOverride || { key: lowerKey, code, ctrlKey: event.ctrlKey, altKey: event.altKey, shiftKey: event.shiftKey, metaKey: event.metaKey };
     shortcutButton.classList.remove("is-setting-shortcut");
     shortcutButton.blur();
     shortcutButton.value = formatShortcut(recordingDraft.shortcut);
