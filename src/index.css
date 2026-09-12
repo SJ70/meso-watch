@@ -715,6 +715,10 @@ button:disabled {
   margin-left: 2px;
 }
 
+.volume-setting .control-label {
+  margin-left: 0;
+}
+
 .opacity-setting-header {
   display: flex;
   align-items: baseline;
