@@ -68,7 +68,7 @@ const ALARM_PATTERNS = {
 export function playNotifySound(level, alarmType = "beep") {
   if (typeof AudioContext === "undefined" || level === 0) return;
   const audioContext = new AudioContext();
-  const peakGain = 0.16 * (level / 100);
+  const peakGain = 0.5 * (level / 100);
   const pattern = ALARM_PATTERNS[alarmType] || ALARM_PATTERNS.beep;
   pattern(audioContext, peakGain);
 }
@@ -84,7 +84,7 @@ export function previewAlarmSound(level, alarmType = "beep") {
   }
   if (typeof AudioContext === "undefined" || level === 0) return;
   previewAudioContext = new AudioContext();
-  const peakGain = 0.16 * (level / 100);
+  const peakGain = 0.5 * (level / 100);
   const pattern = ALARM_PATTERNS[alarmType] || ALARM_PATTERNS.beep;
   pattern(previewAudioContext, peakGain);
 }
