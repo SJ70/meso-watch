@@ -22,6 +22,7 @@
   "build": {
     "appId": "com.mesowatch.app",
     "productName": "메소워치",
+    "executableName": "meso-watch",
     "npmRebuild": false,
     "files": [
       "electron/**/*",
@@ -29,9 +30,19 @@
       "public/**/*"
     ],
     "win": {
-      "target": "portable",
+      "target": ["nsis", "portable"],
       "icon": "public/logo.png",
       "requestedExecutionLevel": "requireAdministrator"
+    },
+    "nsis": {
+      "differentialPackage": false,
+      "artifactName": "meso-watch ${version} setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "meso-watch ${version} portable.${ext}"
+    },
+    "releaseInfo": {
+      "releaseNotesFile": "build/release-notes.md"
     },
     "publish": {
       "provider": "github"
