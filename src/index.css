@@ -275,27 +275,6 @@ h1 {
   gap: 8px;
 }
 
-.global-controls {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.global-action {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  font-size: 0.85rem;
-}
-
-.global-action.secondary {
-  background: color-mix(in srgb, var(--paper) calc(var(--panel-opacity) * 100%), transparent);
-}
-
 .timer-card-header {
   display: grid;
   grid-template-columns: auto 1fr auto;

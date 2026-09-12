@@ -41,12 +41,6 @@
         <button class="settings-toggle close-button" id="closeButton" type="button" aria-label="닫기"></button>
       </div>
     </header>
-    <div class="global-controls" aria-label="전체 타이머 제어">
-      <button class="secondary global-action" id="startAllButton" type="button">전체 시작</button>
-      <button class="secondary global-action" id="pauseAllButton" type="button">전체 일시정지</button>
-      <button class="secondary global-action" id="resetAllButton" type="button">전체 정지</button>
-      <button class="secondary global-action" id="restartAllButton" type="button">전체 재시작</button>
-    </div>
     <section class="timer-list" id="timerList" aria-label="등록된 타이머"></section>
   </main>
 
@@ -939,19 +933,6 @@
       renderTimer(timer, draftHost);
       openDialog(draftHost.querySelector(".settings-modal"));
     });
-
-    const startAllButton = document.getElementById("startAllButton");
-    const pauseAllButton = document.getElementById("pauseAllButton");
-    const resetAllButton = document.getElementById("resetAllButton");
-    const restartAllButton = document.getElementById("restartAllButton");
-    startAllButton.prepend(createIconElement("play", { width: 16, height: 16 }));
-    pauseAllButton.prepend(createIconElement("pause", { width: 16, height: 16 }));
-    resetAllButton.prepend(createIconElement("square", { width: 16, height: 16 }));
-    restartAllButton.prepend(createIconElement("rotate-ccw-clock", { width: 16, height: 16 }));
-    startAllButton.addEventListener("click", () => timers.forEach((timer) => startTimer(timer)));
-    pauseAllButton.addEventListener("click", () => timers.forEach((timer) => stopTimer(timer)));
-    resetAllButton.addEventListener("click", () => timers.forEach((timer) => resetTimer(timer)));
-    restartAllButton.addEventListener("click", () => timers.forEach((timer) => restartTimer(timer)));
 
     timers = loadTimerIds().map((id, index) => buildTimer(id, loadDuration(id) ?? 60000, index));
     renderAllTimers();
