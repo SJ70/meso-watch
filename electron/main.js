@@ -75,14 +75,17 @@ ipcMain.handle("set-global-shortcuts", (_event, shortcuts) => {
   return true;
 });
 
-ipcMain.on("resize-to-content", (_event, contentHeight) => {
+ipcMain.handle("resize-to-content", (_event, contentHeight) => {
   if (!mainWindow) return;
   const bounds = mainWindow.getBounds();
-  const workAreaHeight = screen.getDisplayMatching(bounds).workAreaSize.height;
-  const height = Math.min(Math.max(Math.round(contentHeight), 120), workAreaHeight - 40);
-  if (height === bounds.height) return;
-  mainWindow.setBounds({ x: bounds.x, y: bounds.y, width: bounds.width, height: height + 1 });
-  mainWindow.setBounds({ x: bounds.x, y: bounds.y, width: bounds.width, height });
+  const workArea = screen.getDisplayMatching(bounds).workArea;
+  const height = Math.min(Math.max(Math.round(contentHeight), 120), workArea.height - 40);
+  // setBounds keeps x/y fixed and grows downward; if that would push the
+  // bottom edge past the screen, pull the top up instead so it stays visible.
+  const y = Math.min(bounds.y, workArea.y + workArea.height - height);
+  if (height === bounds.height && y === bounds.y) return;
+  mainWindow.setBounds({ x: bounds.x, y, width: bounds.width, height: height + 1 });
+  mainWindow.setBounds({ x: bounds.x, y, width: bounds.width, height });
 });
 
 app.whenReady().then(() => {

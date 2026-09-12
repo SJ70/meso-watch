@@ -106,9 +106,52 @@
       })
       .catch(() => {});
 
+    // Resizing the window can itself nudge document.body's measured height by a
+    // pixel or two (rounding, the main-process shrink workaround), which would
+    // otherwise retrigger the observer below in an endless loop. Ignore requests
+    // that don't differ meaningfully from the last one actually sent. No-op on web.
+    let lastRequestedHeight = null;
+    async function requestResize(height) {
+      if (!window.electronAPI) return;
+      const rounded = Math.ceil(height);
+      if (lastRequestedHeight !== null && Math.abs(rounded - lastRequestedHeight) <= 2) return;
+      lastRequestedHeight = rounded;
+      await window.electronAPI.resizeToContent(rounded);
+    }
+
+    // <dialog> renders in the top layer, so opening one doesn't change
+    // document.body's size and never trips the ResizeObserver below. Grow the
+    // window to fit it when opened; every dialog gets a "close" listener
+    // (fires for .close(), Escape, and <form method="dialog">) to shrink back.
+    function measureDialogHeight(dialog) {
+      // Measure the dialog's natural height without actually showing it yet,
+      // so the window can be resized to fit *before* showModal() paints it -
+      // mirroring the order that already works for the timer-list growing.
+      const prevPosition = dialog.style.position;
+      const prevVisibility = dialog.style.visibility;
+      const prevDisplay = dialog.style.display;
+      dialog.style.position = "fixed";
+      dialog.style.visibility = "hidden";
+      dialog.style.display = "block";
+      const height = dialog.getBoundingClientRect().height;
+      dialog.style.position = prevPosition;
+      dialog.style.visibility = prevVisibility;
+      dialog.style.display = prevDisplay;
+      return height;
+    }
+    async function openDialog(dialog) {
+      const bodyHeight = document.body.getBoundingClientRect().height;
+      const dialogHeight = measureDialogHeight(dialog);
+      await requestResize(Math.max(bodyHeight, dialogHeight + 40));
+      dialog.showModal();
+    }
+    function registerDialogShrinkOnClose(dialog) {
+      dialog.addEventListener("close", () => requestResize(document.body.getBoundingClientRect().height));
+    }
+
     if (window.electronAPI) {
       const contentResizeObserver = new ResizeObserver((entries) => {
-        window.electronAPI.resizeToContent(Math.ceil(entries[0].contentRect.height));
+        requestResize(entries[0].contentRect.height);
       });
       contentResizeObserver.observe(document.body);
     }
@@ -164,12 +207,13 @@
     bgOpacitySlider.value = bgOpacity;
     panelOpacitySlider.value = panelOpacity;
     previewOpacity();
+    registerDialogShrinkOnClose(screenSettingsDialog);
     screenSettingsButton.addEventListener("click", () => {
       committedBgOpacity = bgOpacity;
       committedPanelOpacity = panelOpacity;
       bgOpacitySlider.value = bgOpacity;
       panelOpacitySlider.value = panelOpacity;
-      screenSettingsDialog.showModal();
+      openDialog(screenSettingsDialog);
     });
     screenSettingsConfirmButton.addEventListener("click", () => {
       saveOpacity();
@@ -197,6 +241,7 @@
     const confirmCancelButton = document.getElementById("confirmCancelButton");
     const confirmDeleteButton = document.getElementById("confirmDeleteButton");
     let pendingDeleteTimer = null;
+    registerDialogShrinkOnClose(confirmDialog);
 
     confirmCancelButton.addEventListener("click", () => {
       pendingDeleteTimer = null;
@@ -517,6 +562,7 @@
         </dialog>`;
 
       const settingsModal = element.querySelector(".settings-modal");
+      registerDialogShrinkOnClose(settingsModal);
       let draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon };
       function updateIconOptionsUi() {
         element.querySelectorAll(".icon-option").forEach((button) => {
@@ -591,7 +637,7 @@
       });
       element.querySelector(".settings-toggle").addEventListener("click", () => {
         resetDraftFromTimer();
-        settingsModal.showModal();
+        openDialog(settingsModal);
       });
       element.querySelector(".modal-close").addEventListener("click", () => {
         cancelShortcutRecording();
@@ -794,7 +840,7 @@
     function confirmDeleteTimer(timer) {
       confirmMessage.textContent = `"${timer.name}" 타이머를 삭제할까요?`;
       pendingDeleteTimer = timer;
-      confirmDialog.showModal();
+      openDialog(confirmDialog);
     }
 
     function restartTimerById(timerId) {
@@ -853,7 +899,7 @@
       draftHost.className = "draft-host";
       document.body.appendChild(draftHost);
       renderTimer(timer, draftHost);
-      draftHost.querySelector(".settings-modal").showModal();
+      openDialog(draftHost.querySelector(".settings-modal"));
     });
 
     const startAllButton = document.getElementById("startAllButton");

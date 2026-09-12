@@ -218,6 +218,8 @@ h1 {
 
 .settings-modal {
   width: min(100% - 32px, 356px);
+  max-height: none;
+  overflow: visible;
   padding: 12px;
   color: var(--ink);
   background: var(--card);
