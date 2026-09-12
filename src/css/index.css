@@ -173,6 +173,10 @@ h1 {
   opacity: 1;
 }
 
+.timer-card.has-progress:not(.is-running):not(.is-finished) > .timer-progress-ring {
+  opacity: 0.5;
+}
+
 .timer-progress-ring rect {
   x: 2px;
   y: 2px;
