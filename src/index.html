@@ -303,16 +303,17 @@
 
     function formatShortcut(shortcut) {
       if (!shortcut) return "없음";
-      const standaloneModifiers = {
-        control: "Ctrl",
-        ctrl: "Ctrl",
-        alt: "Alt",
-        shift: "Shift",
-        meta: "Meta",
-        command: "Meta",
-        win: "Meta"
+      const standaloneModifierLabels = {
+        ControlLeft: "Ctrl",
+        ControlRight: "Ctrl",
+        AltLeft: "Alt",
+        AltRight: "Alt",
+        ShiftLeft: "Shift",
+        ShiftRight: "Shift",
+        MetaLeft: "Meta",
+        MetaRight: "Meta"
       };
-      const standaloneModifier = standaloneModifiers[shortcut.key];
+      const standaloneModifier = standaloneModifierLabels[shortcut.code];
       if (standaloneModifier) return standaloneModifier;
 
       if (shortcut.key === " " || shortcut.key === "space" || shortcut.key === "spacebar") return "Spacebar";
@@ -762,13 +763,24 @@
       recordingElement = null;
     }
 
+    // Electron's raw-input capture treats left/right Ctrl/Alt/Shift as the same key
+    // (see electron/rawInputDaemon.js); normalize recorded codes to match, so a
+    // shortcut set with either side still triggers. The web build has no such
+    // capture and is left alone.
+    const NORMALIZE_MODIFIER_CODE = {
+      ControlRight: "ControlLeft",
+      ShiftRight: "ShiftLeft",
+      AltRight: "AltLeft"
+    };
+
     window.addEventListener("keydown", (event) => {
       if (recordingDraft !== null) {
         event.preventDefault();
         const shortcutButton = recordingElement.querySelector(".shortcut-button");
+        const code = window.electronAPI ? (NORMALIZE_MODIFIER_CODE[event.code] || event.code) : event.code;
         recordingDraft.shortcut = event.key === "Escape"
           ? null
-          : { key: event.key.toLowerCase(), code: event.code, ctrlKey: event.ctrlKey, altKey: event.altKey, shiftKey: event.shiftKey, metaKey: event.metaKey };
+          : { key: event.key.toLowerCase(), code, ctrlKey: event.ctrlKey, altKey: event.altKey, shiftKey: event.shiftKey, metaKey: event.metaKey };
         shortcutButton.classList.remove("is-setting-shortcut");
         shortcutButton.blur();
         shortcutButton.value = formatShortcut(recordingDraft.shortcut);

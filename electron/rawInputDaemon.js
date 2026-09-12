@@ -106,6 +106,13 @@ const MODIFIER_FIELD_BY_CODE = {
   MetaLeft: "metaKey", MetaRight: "metaKey",
 };
 
+// Left/right variants of Ctrl/Alt/Shift are treated as the same shortcut key.
+const NORMALIZE_CODE = {
+  ControlRight: "ControlLeft",
+  ShiftRight: "ShiftLeft",
+  AltRight: "AltLeft",
+};
+
 const modifierState = { ctrlKey: false, altKey: false, shiftKey: false, metaKey: false };
 
 function handleRawInput(hRawInput) {
@@ -120,13 +127,13 @@ function handleRawInput(hRawInput) {
 
   const makeCode = buffer.readUInt16LE(24);
   const flags = buffer.readUInt16LE(26);
-  const vKey = buffer.readUInt16LE(30);
-  if (vKey === 0xff) return; // "fake key" per MSDN, part of an escaped sequence
 
   const isBreak = (flags & 1) === 1;
   const isE0 = (flags & 2) === 2;
-  const code = (isE0 ? SCAN_TO_CODE_E0 : SCAN_TO_CODE)[makeCode];
-  if (!code) return;
+  const rawCode = (isE0 ? SCAN_TO_CODE_E0 : SCAN_TO_CODE)[makeCode];
+  if (!rawCode) return;
+  // Ctrl/Alt/Shift are treated as the same shortcut key regardless of side; Meta stays distinct.
+  const code = NORMALIZE_CODE[rawCode] || rawCode;
 
   const modifierField = MODIFIER_FIELD_BY_CODE[code];
   if (modifierField) modifierState[modifierField] = !isBreak;
