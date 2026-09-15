@@ -12,6 +12,7 @@ import {
 import { requestResize, openDialog, registerDialogShrinkOnClose } from "./dialog-utils.js";
 import { previewAlarmSound, effectiveVolume, notifyDone, stopAlarm } from "./sound.js";
 import { formatShortcut, NORMALIZE_MODIFIER_CODE } from "./shortcuts.js";
+import { checkForUpdate } from "./updateCheck.js";
 
 const timerList = document.getElementById("timerList");
 const addTimerButton = document.getElementById("addTimerButton");
@@ -22,6 +23,11 @@ fetch("../package.json")
   .then((data) => {
     document.getElementById("versionTag").textContent = `v ${data.version}`;
     document.getElementById("electronVersionTag").textContent = `v ${data.version}`;
+    checkForUpdate(data.version).then((update) => {
+      if (!update) return;
+      pendingUpdateUrl = update.url;
+      openDialog(updateDialog);
+    });
   })
   .catch(() => {});
 
@@ -131,6 +137,18 @@ confirmDeleteButton.addEventListener("click", () => {
 });
 confirmDialog.addEventListener("cancel", () => {
   pendingDeleteTimer = null;
+});
+
+const updateDialog = document.getElementById("updateDialog");
+const updateLaterButton = document.getElementById("updateLaterButton");
+const updateDownloadButton = document.getElementById("updateDownloadButton");
+registerDialogShrinkOnClose(updateDialog);
+let pendingUpdateUrl = null;
+
+updateLaterButton.addEventListener("click", () => updateDialog.close());
+updateDownloadButton.addEventListener("click", () => {
+  if (pendingUpdateUrl) window.open(pendingUpdateUrl, "_blank");
+  updateDialog.close();
 });
 
 function loadVolume() {

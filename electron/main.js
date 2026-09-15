@@ -1,6 +1,6 @@
 const path = require("node:path");
 const { Worker } = require("node:worker_threads");
-const { app, BrowserWindow, ipcMain, screen } = require("electron");
+const { app, BrowserWindow, ipcMain, screen, shell } = require("electron");
 const koffi = require("koffi");
 
 let mainWindow = null;
@@ -35,6 +35,10 @@ function createWindow() {
   mainWindow.on("blur", () => mainWindow.setAlwaysOnTop(true, "screen-saver"));
 
   mainWindow.removeMenu();
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: "deny" };
+  });
   mainWindow.loadFile(path.join(__dirname, "..", "src", "index.html"));
 }
 
