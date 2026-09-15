@@ -18,11 +18,30 @@ export function configureWindowSizeState(stateGetter) {
   getState = stateGetter;
 }
 
-function computeTargetWidth() {
-  const { timerCount, timersPerRow, uiZoom } = getState();
+// CSS-effective width (pre-zoom) the timer grid should have. Electron's
+// `zoom` on <html> already rescales measured heights into physical px on its
+// own (see below), so only the width sent to the main process needs the
+// explicit uiZoom multiplier.
+function computeBaseWidth() {
+  const { timerCount, timersPerRow } = getState();
   const columns = Math.max(1, Math.min(timersPerRow, timerCount || 1));
-  const baseWidth = columns * TIMER_CARD_TARGET_WIDTH + (columns - 1) * TIMER_LIST_GAP + MAIN_OUTER_PADDING;
-  return baseWidth * (uiZoom / 100);
+  return columns * TIMER_CARD_TARGET_WIDTH + (columns - 1) * TIMER_LIST_GAP + MAIN_OUTER_PADDING;
+}
+
+// The timer grid's columns come from CSS auto-fill, driven by the window's
+// *current* width - not by timersPerRow directly. Measuring body height at
+// the current width (e.g. the hardcoded width Electron creates the window
+// with at startup) can therefore catch the grid at a different column/row
+// count than the width we're about to resize to. Temporarily pinning body's
+// width to the target width forces the grid to lay out at its final column
+// count before we measure, so the height sent alongside it actually matches.
+// Reverted before this function returns, so it never paints.
+function measureBodyHeightAtWidth(baseWidth) {
+  const prevWidth = document.body.style.width;
+  document.body.style.width = `${baseWidth}px`;
+  const height = document.body.getBoundingClientRect().height;
+  document.body.style.width = prevWidth;
+  return height;
 }
 
 let lastSent = null;
@@ -44,7 +63,10 @@ function sendResize(width, height) {
 // Fits the window to the main timer list. Call after anything that changes
 // how many timers there are, the timers-per-row setting, or the zoom level.
 export function syncWindowToContent() {
-  return sendResize(computeTargetWidth(), document.body.getBoundingClientRect().height);
+  const { uiZoom } = getState();
+  const baseWidth = computeBaseWidth();
+  const height = measureBodyHeightAtWidth(baseWidth);
+  return sendResize(baseWidth * (uiZoom / 100), height);
 }
 
 // <dialog> renders in the top layer, so its content never contributes to
@@ -53,6 +75,11 @@ export function syncWindowToContent() {
 // Await the result before actually opening the dialog so it never flashes at
 // the pre-resize window size.
 export function syncWindowToDialog(dialog) {
+  const { uiZoom } = getState();
+  const baseWidth = computeBaseWidth();
+  const prevBodyWidth = document.body.style.width;
+  document.body.style.width = `${baseWidth}px`;
+
   const prevPosition = dialog.style.position;
   const prevVisibility = dialog.style.visibility;
   const prevDisplay = dialog.style.display;
@@ -63,6 +90,9 @@ export function syncWindowToDialog(dialog) {
   dialog.style.position = prevPosition;
   dialog.style.visibility = prevVisibility;
   dialog.style.display = prevDisplay;
+
   const bodyHeight = document.body.getBoundingClientRect().height;
-  return sendResize(computeTargetWidth(), Math.max(bodyHeight, dialogHeight + 40));
+  document.body.style.width = prevBodyWidth;
+
+  return sendResize(baseWidth * (uiZoom / 100), Math.max(bodyHeight, dialogHeight + 40));
 }
