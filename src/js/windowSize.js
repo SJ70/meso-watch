@@ -27,26 +27,31 @@ function computeTargetWidth() {
 
 let lastSent = null;
 
+// Returns a promise that resolves once the window has actually finished
+// resizing, so callers that need the new size in place before doing anything
+// else (e.g. opening a dialog without it flashing at the old size) can await it.
 function sendResize(width, height) {
-  if (!window.electronAPI) return;
+  if (!window.electronAPI) return Promise.resolve();
   const rounded = { width: Math.round(width), height: Math.max(MIN_WINDOW_HEIGHT, Math.ceil(height)) };
   // The resize itself can nudge the next measured height by a pixel or two
   // (rounding, the main-process +1px repaint nudge); ignore requests that
   // don't differ meaningfully from the last one actually sent.
-  if (lastSent && Math.abs(rounded.width - lastSent.width) <= 2 && Math.abs(rounded.height - lastSent.height) <= 2) return;
+  if (lastSent && Math.abs(rounded.width - lastSent.width) <= 2 && Math.abs(rounded.height - lastSent.height) <= 2) return Promise.resolve();
   lastSent = rounded;
-  window.electronAPI.resizeWindow(rounded.width, rounded.height);
+  return window.electronAPI.resizeWindow(rounded.width, rounded.height);
 }
 
 // Fits the window to the main timer list. Call after anything that changes
 // how many timers there are, the timers-per-row setting, or the zoom level.
 export function syncWindowToContent() {
-  sendResize(computeTargetWidth(), document.body.getBoundingClientRect().height);
+  return sendResize(computeTargetWidth(), document.body.getBoundingClientRect().height);
 }
 
 // <dialog> renders in the top layer, so its content never contributes to
 // document.body's own measured height - call this when one opens so the
 // window grows to fit it (measured off-screen, before showModal() paints it).
+// Await the result before actually opening the dialog so it never flashes at
+// the pre-resize window size.
 export function syncWindowToDialog(dialog) {
   const prevPosition = dialog.style.position;
   const prevVisibility = dialog.style.visibility;
@@ -59,5 +64,5 @@ export function syncWindowToDialog(dialog) {
   dialog.style.visibility = prevVisibility;
   dialog.style.display = prevDisplay;
   const bodyHeight = document.body.getBoundingClientRect().height;
-  sendResize(computeTargetWidth(), Math.max(bodyHeight, dialogHeight + 40));
+  return sendResize(computeTargetWidth(), Math.max(bodyHeight, dialogHeight + 40));
 }

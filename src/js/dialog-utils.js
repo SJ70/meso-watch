@@ -6,7 +6,7 @@ import { syncWindowToContent, syncWindowToDialog } from "./windowSize.js";
 // listener via registerDialogShrinkOnClose (fires for .close(), Escape, and
 // <form method="dialog">).
 export async function openDialog(dialog) {
-  syncWindowToDialog(dialog);
+  await syncWindowToDialog(dialog);
   dialog.showModal();
 }
 
