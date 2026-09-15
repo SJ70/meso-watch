@@ -843,15 +843,15 @@ button:disabled {
   cursor: not-allowed;
 }
 
-.auto-restart-setting {
+.toggle-setting {
   margin-bottom: 10px;
 }
 
-.auto-restart-setting .opacity-setting-header {
+.toggle-setting .opacity-setting-header {
   align-items: center;
 }
 
-.auto-restart-setting .toggle-switch {
+.toggle-setting .toggle-switch {
   margin-top: 0;
 }
 
@@ -908,12 +908,6 @@ button:disabled {
   outline-offset: 2px;
 }
 
-.toggle-switch-label {
-  color: var(--muted);
-  font-weight: 700;
-  font-size: 0.68rem;
-}
-
 .select-wrapper {
   position: relative;
 }
@@ -955,7 +949,10 @@ button:disabled {
 }
 
 .opacity-slider {
+  display: block;
   width: 100%;
+  margin: 0;
+  padding: 0;
   accent-color: var(--accent);
   cursor: pointer;
 }
@@ -981,6 +978,16 @@ button:disabled {
   opacity: 0.6;
   font-weight: 400;
   font-size: 0.6rem;
+}
+
+/* Unlike .duration-hint (a genuine tooltip-ish aside), these show the
+   setting's actual current value, so they read with the same weight/style
+   as the label they sit next to instead of looking like a faded footnote. */
+.setting-value {
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 0.64rem;
+  letter-spacing: 0.11em;
 }
 
 .settings-modal {

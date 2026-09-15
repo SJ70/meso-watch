@@ -571,6 +571,15 @@ function renderTimer(timer, target = timerList) {
           <button class="duration-preset" type="button" data-ms="1800000">30분</button>
         </div>
       </div>
+      <div class="auto-restart-setting toggle-setting">
+        <div class="opacity-setting-header">
+          <span class="control-label">타이머 자동 재시작</span>
+          <label class="toggle-switch">
+            <input class="auto-restart-checkbox" type="checkbox"${timer.autoRestart ? " checked" : ""} aria-label="타이머 ${timer.id} 자동 재시작" />
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </label>
+        </div>
+      </div>
       <div class="alarm-type-setting">
         <span class="control-label">알람음</span>
         <div class="select-wrapper">
@@ -579,33 +588,28 @@ function renderTimer(timer, target = timerList) {
           </select>
         </div>
       </div>
-      <div class="alarm-repeat-setting">
-        <div class="opacity-setting-header">
-          <span class="control-label">알람 반복 횟수</span>
-          <span class="duration-hint alarm-repeat-count-value"></span>
-        </div>
-        <input class="opacity-slider alarm-repeat-count-slider" type="range" min="${MIN_ALARM_REPEAT_COUNT}" max="${MAX_ALARM_REPEAT_COUNT}" step="1" aria-label="타이머 ${timer.id} 알람 반복 횟수"${timer.alarmRepeatUnlimited ? " disabled" : ""} />
-        <label class="toggle-switch">
-          <input class="alarm-repeat-unlimited-checkbox" type="checkbox"${timer.alarmRepeatUnlimited ? " checked" : ""} aria-label="타이머 ${timer.id} 알람 무제한 반복" />
-          <span class="toggle-track"><span class="toggle-thumb"></span></span>
-          <span class="toggle-switch-label">무제한</span>
-        </label>
-      </div>
-      <div class="auto-restart-setting">
-        <div class="opacity-setting-header">
-          <span class="control-label">자동 재시작</span>
-          <label class="toggle-switch">
-            <input class="auto-restart-checkbox" type="checkbox"${timer.autoRestart ? " checked" : ""} aria-label="타이머 ${timer.id} 자동 재시작" />
-            <span class="toggle-track"><span class="toggle-thumb"></span></span>
-          </label>
-        </div>
-      </div>
       <div class="opacity-setting volume-setting">
         <div class="opacity-setting-header">
           <span class="control-label">알람 볼륨</span>
-          <span class="duration-hint volume-value"></span>
+          <span class="setting-value volume-value"></span>
         </div>
         <input class="opacity-slider volume-slider-input" type="range" min="0" max="100" step="1" aria-label="타이머 ${timer.id} 음량" />
+      </div>
+      <div class="alarm-repeat-setting">
+        <div class="opacity-setting-header">
+          <span class="control-label">알람 반복 횟수</span>
+          <span class="setting-value alarm-repeat-count-value"></span>
+        </div>
+        <input class="opacity-slider alarm-repeat-count-slider" type="range" min="${MIN_ALARM_REPEAT_COUNT}" max="${MAX_ALARM_REPEAT_COUNT}" step="1" aria-label="타이머 ${timer.id} 알람 반복 횟수"${timer.alarmRepeatUnlimited ? " disabled" : ""} />
+      </div>
+      <div class="alarm-repeat-unlimited-setting toggle-setting">
+        <div class="opacity-setting-header">
+          <span class="control-label">알람 반복 무제한</span>
+          <label class="toggle-switch">
+            <input class="alarm-repeat-unlimited-checkbox" type="checkbox"${timer.alarmRepeatUnlimited ? " checked" : ""} aria-label="타이머 ${timer.id} 알람 반복 무제한" />
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </label>
+        </div>
       </div>
       <div class="icon-setting">
         <span class="control-label">아이콘</span>
@@ -641,7 +645,7 @@ function renderTimer(timer, target = timerList) {
     const slider = element.querySelector(".volume-slider-input");
     const valueDisplay = element.querySelector(".volume-value");
     slider.value = draft.volume;
-    valueDisplay.textContent = `마스터 볼륨의 ${draft.volume}%`;
+    valueDisplay.textContent = `${draft.volume}%`;
   }
   function updateAlarmTypeSettingUi() {
     element.querySelector(".alarm-type-select").value = draft.alarmType;
@@ -649,7 +653,7 @@ function renderTimer(timer, target = timerList) {
   function updateAlarmRepeatSettingUi() {
     element.querySelector(".alarm-repeat-count-slider").value = draft.alarmRepeatCount;
     element.querySelector(".alarm-repeat-count-slider").disabled = draft.alarmRepeatUnlimited;
-    element.querySelector(".alarm-repeat-count-value").textContent = `${draft.alarmRepeatCount}회`;
+    element.querySelector(".alarm-repeat-count-value").textContent = draft.alarmRepeatUnlimited ? "무제한" : `${draft.alarmRepeatCount}회`;
     element.querySelector(".alarm-repeat-unlimited-checkbox").checked = draft.alarmRepeatUnlimited;
   }
   function updateAutoRestartSettingUi() {
