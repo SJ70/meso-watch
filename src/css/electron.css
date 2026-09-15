@@ -3,6 +3,19 @@ body {
   -webkit-app-region: drag;
 }
 
+main {
+  width: calc(100% - 32px);
+}
+
+/* The window itself is sized to fit content, but a mismatch mid-resize (or a
+   settings-modal dialog) can briefly overflow it; keep scrolling functional
+   without ever showing a scrollbar over the overlay. */
+::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
 header {
   justify-content: flex-end;
 }
@@ -31,4 +44,8 @@ header {
 
 .close-button {
   display: inline-flex;
+}
+
+.timers-per-row-setting {
+  display: block;
 }

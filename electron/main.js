@@ -92,6 +92,18 @@ ipcMain.handle("resize-to-content", (_event, contentHeight) => {
   mainWindow.setBounds({ x: bounds.x, y, width: bounds.width, height });
 });
 
+ipcMain.handle("resize-width", (_event, requestedWidth) => {
+  if (!mainWindow) return;
+  const bounds = mainWindow.getBounds();
+  const workArea = screen.getDisplayMatching(bounds).workArea;
+  const width = Math.min(Math.max(Math.round(requestedWidth), 200), workArea.width);
+  // Keep the right edge in place when shrinking, pulled left instead of
+  // growing off-screen, mirroring the y-clamp resize-to-content does.
+  const x = Math.min(bounds.x, workArea.x + workArea.width - width);
+  if (width === bounds.width && x === bounds.x) return;
+  mainWindow.setBounds({ x, y: bounds.y, width, height: bounds.height });
+});
+
 app.whenReady().then(() => {
   createWindow();
   startRawInputWorker();

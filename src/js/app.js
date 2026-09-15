@@ -5,6 +5,7 @@ import {
   DEFAULT_MASTER_VOLUME,
   DEFAULT_TIMER_VOLUME,
   DEFAULT_TIMER_MINUTES,
+  DEFAULT_TIMERS_PER_ROW,
   ALARM_TYPES,
   DEFAULT_ALARM_TYPE,
   DEFAULT_TIMERS,
@@ -78,6 +79,47 @@ function revertOpacity() {
   previewOpacity();
 }
 
+function loadTimersPerRow() {
+  const stored = Number(localStorage.getItem("meso-watch-timers-per-row"));
+  return Number.isInteger(stored) && stored >= 1 && stored <= 6 ? stored : DEFAULT_TIMERS_PER_ROW;
+}
+
+// Window width is derived from column count rather than user-draggable, so it
+// always exactly fits whichever is smaller: the per-row setting, or however
+// many timers actually exist (a single timer shouldn't leave the window as
+// wide as a full row). Sized a bit past the grid's 230px CSS floor (see
+// .timer-list) so cards get some 1fr stretch room instead of rendering at
+// the bare minimum.
+const TIMER_CARD_TARGET_WIDTH = 250;
+const TIMER_LIST_GAP = 8;
+const MAIN_OUTER_PADDING = 32;
+
+function updateWindowWidth() {
+  if (!window.electronAPI) return;
+  const columns = Math.max(1, Math.min(timersPerRow, timers.length || 1));
+  const width = columns * TIMER_CARD_TARGET_WIDTH + (columns - 1) * TIMER_LIST_GAP + MAIN_OUTER_PADDING;
+  window.electronAPI.resizeWidth(width);
+}
+
+let timersPerRow = loadTimersPerRow();
+let committedTimersPerRow = timersPerRow;
+
+function updateTimersPerRowUi() {
+  timersPerRowSlider.value = timersPerRow;
+  timersPerRowValue.textContent = `${timersPerRow}개`;
+}
+
+function saveTimersPerRow() {
+  localStorage.setItem("meso-watch-timers-per-row", String(timersPerRow));
+  committedTimersPerRow = timersPerRow;
+  updateWindowWidth();
+}
+
+function revertTimersPerRow() {
+  timersPerRow = committedTimersPerRow;
+  updateTimersPerRowUi();
+}
+
 const screenSettingsButton = document.getElementById("screenSettingsButton");
 const screenSettingsDialog = document.getElementById("screenSettingsDialog");
 const screenSettingsCancelButton = document.getElementById("screenSettingsCancelButton");
@@ -86,27 +128,37 @@ const bgOpacitySlider = document.getElementById("bgOpacitySlider");
 const panelOpacitySlider = document.getElementById("panelOpacitySlider");
 const bgOpacityValue = document.getElementById("bgOpacityValue");
 const panelOpacityValue = document.getElementById("panelOpacityValue");
+const timersPerRowSlider = document.getElementById("timersPerRowSlider");
+const timersPerRowValue = document.getElementById("timersPerRowValue");
 screenSettingsButton.appendChild(createIconElement("settings", { width: 18, height: 18 }));
 bgOpacitySlider.value = bgOpacity;
 panelOpacitySlider.value = panelOpacity;
 previewOpacity();
+updateTimersPerRowUi();
 registerDialogShrinkOnClose(screenSettingsDialog);
 screenSettingsButton.addEventListener("click", () => {
   committedBgOpacity = bgOpacity;
   committedPanelOpacity = panelOpacity;
+  committedTimersPerRow = timersPerRow;
   bgOpacitySlider.value = bgOpacity;
   panelOpacitySlider.value = panelOpacity;
+  updateTimersPerRowUi();
   openDialog(screenSettingsDialog);
 });
 screenSettingsConfirmButton.addEventListener("click", () => {
   saveOpacity();
+  saveTimersPerRow();
   screenSettingsDialog.close();
 });
 screenSettingsCancelButton.addEventListener("click", () => {
   revertOpacity();
+  revertTimersPerRow();
   screenSettingsDialog.close();
 });
-screenSettingsDialog.addEventListener("cancel", () => revertOpacity());
+screenSettingsDialog.addEventListener("cancel", () => {
+  revertOpacity();
+  revertTimersPerRow();
+});
 bgOpacitySlider.addEventListener("input", (event) => {
   bgOpacity = Math.min(100, Math.max(0, Number(event.target.value)));
   previewOpacity();
@@ -114,6 +166,10 @@ bgOpacitySlider.addEventListener("input", (event) => {
 panelOpacitySlider.addEventListener("input", (event) => {
   panelOpacity = Math.min(100, Math.max(0, Number(event.target.value)));
   previewOpacity();
+});
+timersPerRowSlider.addEventListener("input", (event) => {
+  timersPerRow = Math.min(6, Math.max(1, Number(event.target.value)));
+  updateTimersPerRowUi();
 });
 
 const masterVolumeSlider = document.getElementById("masterVolumeSlider");
@@ -617,6 +673,7 @@ function renderTimer(timer, target = timerList) {
       timerList.appendChild(element);
       draftHost?.remove();
       saveTimerIds();
+      updateWindowWidth();
     }
     saveDuration(timer);
     saveShortcuts();
@@ -770,6 +827,7 @@ function removeTimer(timer) {
   renderAllTimers();
   saveTimerIds();
   saveShortcuts();
+  updateWindowWidth();
 }
 
 function confirmDeleteTimer(timer) {
@@ -851,5 +909,6 @@ if (initialTimerIds.length > 0) {
 }
 renderAllTimers();
 saveShortcuts();
+updateWindowWidth();
 
 window.electronAPI?.onGlobalRestart(restartTimerById);

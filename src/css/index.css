@@ -93,6 +93,10 @@ header {
   display: none;
 }
 
+.timers-per-row-setting {
+  display: none;
+}
+
 .header-actions {
   display: flex;
   flex: 0 0 auto;
