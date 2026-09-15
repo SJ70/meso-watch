@@ -485,6 +485,7 @@ function updateTimerElement(timer) {
   element.querySelector(".timer-shortcut-badge").textContent = formatShortcut(timer.shortcut);
   element.classList.toggle("is-running", Boolean(timer.timerId));
   element.classList.toggle("is-finished", Boolean(timer.isFinished));
+  element.style.setProperty("--alarm-blink-count", alarmRepeatMax(timer));
   element.classList.toggle("is-alarming", timer.remainingAlarmCount > 0);
   element.classList.toggle("has-progress", timer.remainingMs < timer.totalMs);
   const progress = timer.totalMs > 0 ? timer.remainingMs / timer.totalMs : 0;

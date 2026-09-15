@@ -182,7 +182,6 @@ h1 {
   image-rendering: pixelated;
   opacity: 0.1;
   pointer-events: none;
-  transition: opacity 300ms ease;
 }
 
 .timer-card.is-dragging {
@@ -197,6 +196,15 @@ h1 {
   100% { opacity: 0; }
 }
 
+/* Same blink, but for the icon overlay (.timer-card::before) specifically -
+   its normal (non-alarming) resting opacity is 0.1, not 0, so it has to end
+   there too or holding the last frame (fill-mode: forwards) would leave a
+   visible jump from 0 up to 0.1 once the blink stops. */
+@keyframes timer-blink-icon {
+  0% { opacity: 1; }
+  100% { opacity: 0.1; }
+}
+
 .timer-card::after {
   position: absolute;
   inset: 0;
@@ -206,17 +214,24 @@ h1 {
   content: "";
   opacity: 0;
   pointer-events: none;
-  transition: opacity 300ms ease;
 }
 
+/* Iteration count is set per-card via --alarm-blink-count (see
+   updateTimerElement in app.js) instead of "infinite" + JS class removal -
+   a JS setInterval and a CSS animation are two independent clocks, so
+   stopping via JS timing nearly always caught mid-blink, producing a visible
+   snap or (with a transition papering over that) an extra soft flash.
+   Letting the animation run its own exact, finite number of cycles and hold
+   the final frame (fill-mode: forwards) means it always stops precisely at
+   the already-invisible end of a cycle - no snap, no extra blink. */
 .timer-card.is-alarming::after {
-  animation: timer-blink 1s linear infinite;
+  animation: timer-blink 1s linear var(--alarm-blink-count, 1) forwards;
 }
 
 .timer-card.is-alarming::before {
   z-index: 3;
   opacity: 1;
-  animation: timer-blink 1s linear infinite;
+  animation: timer-blink-icon 1s linear var(--alarm-blink-count, 1) forwards;
 }
 
 .draft-host {
