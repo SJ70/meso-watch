@@ -1,3 +1,7 @@
+html {
+  zoom: var(--ui-zoom, 1);
+}
+
 body {
   min-height: 0;
   -webkit-app-region: drag;
@@ -46,6 +50,7 @@ header {
   display: inline-flex;
 }
 
-.timers-per-row-setting {
+.timers-per-row-setting,
+.ui-zoom-setting {
   display: block;
 }

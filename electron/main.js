@@ -79,29 +79,23 @@ ipcMain.handle("set-global-shortcuts", (_event, shortcuts) => {
   return true;
 });
 
-ipcMain.handle("resize-to-content", (_event, contentHeight) => {
-  if (!mainWindow) return;
-  const bounds = mainWindow.getBounds();
-  const workArea = screen.getDisplayMatching(bounds).workArea;
-  const height = Math.min(Math.max(Math.round(contentHeight), 120), workArea.height - 40);
-  // setBounds keeps x/y fixed and grows downward; if that would push the
-  // bottom edge past the screen, pull the top up instead so it stays visible.
-  const y = Math.min(bounds.y, workArea.y + workArea.height - height);
-  if (height === bounds.height && y === bounds.y) return;
-  mainWindow.setBounds({ x: bounds.x, y, width: bounds.width, height: height + 1 });
-  mainWindow.setBounds({ x: bounds.x, y, width: bounds.width, height });
-});
-
-ipcMain.handle("resize-width", (_event, requestedWidth) => {
+// Width and height always arrive together in one call (see
+// src/js/windowSize.js) instead of two independent IPC round trips, so there
+// is no ordering race where a width-only or height-only update can clobber
+// the other dimension with a stale value.
+ipcMain.handle("resize-window", (_event, { width: requestedWidth, height: requestedHeight }) => {
   if (!mainWindow) return;
   const bounds = mainWindow.getBounds();
   const workArea = screen.getDisplayMatching(bounds).workArea;
   const width = Math.min(Math.max(Math.round(requestedWidth), 200), workArea.width);
-  // Keep the right edge in place when shrinking, pulled left instead of
-  // growing off-screen, mirroring the y-clamp resize-to-content does.
+  const height = Math.min(Math.max(Math.round(requestedHeight), 120), workArea.height - 40);
+  // Keeps x/y fixed and grows right/down; if that would push an edge past
+  // the screen, pull the opposite edge in instead so it stays visible.
   const x = Math.min(bounds.x, workArea.x + workArea.width - width);
-  if (width === bounds.width && x === bounds.x) return;
-  mainWindow.setBounds({ x, y: bounds.y, width, height: bounds.height });
+  const y = Math.min(bounds.y, workArea.y + workArea.height - height);
+  if (width === bounds.width && height === bounds.height && x === bounds.x && y === bounds.y) return;
+  mainWindow.setBounds({ x, y, width, height: height + 1 });
+  mainWindow.setBounds({ x, y, width, height });
 });
 
 app.whenReady().then(() => {

@@ -6,14 +6,18 @@ import {
   DEFAULT_TIMER_VOLUME,
   DEFAULT_TIMER_MINUTES,
   DEFAULT_TIMERS_PER_ROW,
+  DEFAULT_UI_ZOOM,
+  MIN_UI_ZOOM,
+  MAX_UI_ZOOM,
   ALARM_TYPES,
   DEFAULT_ALARM_TYPE,
   DEFAULT_TIMERS,
 } from "./constants.js";
-import { requestResize, openDialog, registerDialogShrinkOnClose } from "./dialog-utils.js";
+import { openDialog, registerDialogShrinkOnClose } from "./dialog-utils.js";
 import { previewAlarmSound, effectiveVolume, notifyDone, stopAlarm } from "./sound.js";
 import { formatShortcut, NORMALIZE_MODIFIER_CODE } from "./shortcuts.js";
 import { checkForUpdate } from "./updateCheck.js";
+import { configureWindowSizeState, syncWindowToContent } from "./windowSize.js";
 
 const timerList = document.getElementById("timerList");
 const addTimerButton = document.getElementById("addTimerButton");
@@ -32,12 +36,6 @@ fetch("../package.json")
   })
   .catch(() => {});
 
-if (window.electronAPI) {
-  const contentResizeObserver = new ResizeObserver((entries) => {
-    requestResize(entries[0].contentRect.height);
-  });
-  contentResizeObserver.observe(document.body);
-}
 const closeButton = document.getElementById("closeButton");
 if (window.electronAPI) {
   closeButton.appendChild(createIconElement("x", { width: 18, height: 18 }));
@@ -80,25 +78,20 @@ function revertOpacity() {
 }
 
 function loadTimersPerRow() {
-  const stored = Number(localStorage.getItem("meso-watch-timers-per-row"));
+  // Missing key here means an install from before this setting existed, not
+  // "0" - Number(null) is 0, not NaN, so raw === null must be checked first
+  // (same footgun the opacity defaults hit).
+  const raw = localStorage.getItem("meso-watch-timers-per-row");
+  if (raw === null) return DEFAULT_TIMERS_PER_ROW;
+  const stored = Number(raw);
   return Number.isInteger(stored) && stored >= 1 && stored <= 6 ? stored : DEFAULT_TIMERS_PER_ROW;
 }
 
-// Window width is derived from column count rather than user-draggable, so it
-// always exactly fits whichever is smaller: the per-row setting, or however
-// many timers actually exist (a single timer shouldn't leave the window as
-// wide as a full row). Sized a bit past the grid's 230px CSS floor (see
-// .timer-list) so cards get some 1fr stretch room instead of rendering at
-// the bare minimum.
-const TIMER_CARD_TARGET_WIDTH = 250;
-const TIMER_LIST_GAP = 8;
-const MAIN_OUTER_PADDING = 32;
-
-function updateWindowWidth() {
-  if (!window.electronAPI) return;
-  const columns = Math.max(1, Math.min(timersPerRow, timers.length || 1));
-  const width = columns * TIMER_CARD_TARGET_WIDTH + (columns - 1) * TIMER_LIST_GAP + MAIN_OUTER_PADDING;
-  window.electronAPI.resizeWidth(width);
+function loadUiZoom() {
+  const raw = localStorage.getItem("meso-watch-ui-zoom");
+  if (raw === null) return DEFAULT_UI_ZOOM;
+  const stored = Number(raw);
+  return Number.isFinite(stored) && stored >= MIN_UI_ZOOM && stored <= MAX_UI_ZOOM ? stored : DEFAULT_UI_ZOOM;
 }
 
 let timersPerRow = loadTimersPerRow();
@@ -112,13 +105,35 @@ function updateTimersPerRowUi() {
 function saveTimersPerRow() {
   localStorage.setItem("meso-watch-timers-per-row", String(timersPerRow));
   committedTimersPerRow = timersPerRow;
-  updateWindowWidth();
+  syncWindowToContent();
 }
 
 function revertTimersPerRow() {
   timersPerRow = committedTimersPerRow;
   updateTimersPerRowUi();
 }
+
+let uiZoom = loadUiZoom();
+let committedUiZoom = uiZoom;
+
+function updateUiZoomUi() {
+  uiZoomSlider.value = uiZoom;
+  uiZoomValue.textContent = `${uiZoom}%`;
+}
+
+function saveUiZoom() {
+  localStorage.setItem("meso-watch-ui-zoom", String(uiZoom));
+  committedUiZoom = uiZoom;
+  document.documentElement.style.setProperty("--ui-zoom", uiZoom / 100);
+  syncWindowToContent();
+}
+
+function revertUiZoom() {
+  uiZoom = committedUiZoom;
+  updateUiZoomUi();
+}
+
+configureWindowSizeState(() => ({ timerCount: timers.length, timersPerRow, uiZoom }));
 
 const screenSettingsButton = document.getElementById("screenSettingsButton");
 const screenSettingsDialog = document.getElementById("screenSettingsDialog");
@@ -130,34 +145,42 @@ const bgOpacityValue = document.getElementById("bgOpacityValue");
 const panelOpacityValue = document.getElementById("panelOpacityValue");
 const timersPerRowSlider = document.getElementById("timersPerRowSlider");
 const timersPerRowValue = document.getElementById("timersPerRowValue");
+const uiZoomSlider = document.getElementById("uiZoomSlider");
+const uiZoomValue = document.getElementById("uiZoomValue");
 screenSettingsButton.appendChild(createIconElement("settings", { width: 18, height: 18 }));
 bgOpacitySlider.value = bgOpacity;
 panelOpacitySlider.value = panelOpacity;
 previewOpacity();
 updateTimersPerRowUi();
+updateUiZoomUi();
 registerDialogShrinkOnClose(screenSettingsDialog);
 screenSettingsButton.addEventListener("click", () => {
   committedBgOpacity = bgOpacity;
   committedPanelOpacity = panelOpacity;
   committedTimersPerRow = timersPerRow;
+  committedUiZoom = uiZoom;
   bgOpacitySlider.value = bgOpacity;
   panelOpacitySlider.value = panelOpacity;
   updateTimersPerRowUi();
+  updateUiZoomUi();
   openDialog(screenSettingsDialog);
 });
 screenSettingsConfirmButton.addEventListener("click", () => {
   saveOpacity();
   saveTimersPerRow();
+  saveUiZoom();
   screenSettingsDialog.close();
 });
 screenSettingsCancelButton.addEventListener("click", () => {
   revertOpacity();
   revertTimersPerRow();
+  revertUiZoom();
   screenSettingsDialog.close();
 });
 screenSettingsDialog.addEventListener("cancel", () => {
   revertOpacity();
   revertTimersPerRow();
+  revertUiZoom();
 });
 bgOpacitySlider.addEventListener("input", (event) => {
   bgOpacity = Math.min(100, Math.max(0, Number(event.target.value)));
@@ -170,6 +193,10 @@ panelOpacitySlider.addEventListener("input", (event) => {
 timersPerRowSlider.addEventListener("input", (event) => {
   timersPerRow = Math.min(6, Math.max(1, Number(event.target.value)));
   updateTimersPerRowUi();
+});
+uiZoomSlider.addEventListener("input", (event) => {
+  uiZoom = Math.min(MAX_UI_ZOOM, Math.max(MIN_UI_ZOOM, Number(event.target.value)));
+  updateUiZoomUi();
 });
 
 const masterVolumeSlider = document.getElementById("masterVolumeSlider");
@@ -673,7 +700,7 @@ function renderTimer(timer, target = timerList) {
       timerList.appendChild(element);
       draftHost?.remove();
       saveTimerIds();
-      updateWindowWidth();
+      syncWindowToContent();
     }
     saveDuration(timer);
     saveShortcuts();
@@ -827,7 +854,7 @@ function removeTimer(timer) {
   renderAllTimers();
   saveTimerIds();
   saveShortcuts();
-  updateWindowWidth();
+  syncWindowToContent();
 }
 
 function confirmDeleteTimer(timer) {
@@ -909,6 +936,6 @@ if (initialTimerIds.length > 0) {
 }
 renderAllTimers();
 saveShortcuts();
-updateWindowWidth();
+syncWindowToContent();
 
 window.electronAPI?.onGlobalRestart(restartTimerById);

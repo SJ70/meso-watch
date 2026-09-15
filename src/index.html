@@ -32,6 +32,11 @@
       const panelOpacity = Number.isFinite(storedPanelOpacity) && storedPanelOpacity >= 0 && storedPanelOpacity <= 100 ? storedPanelOpacity : defaults.panelOpacityElectron;
       document.documentElement.style.setProperty("--bg-opacity", bgOpacity / 100);
       document.documentElement.style.setProperty("--panel-opacity", panelOpacity / 100);
+
+      const rawUiZoom = localStorage.getItem("meso-watch-ui-zoom");
+      const storedUiZoom = rawUiZoom === null ? NaN : Number(rawUiZoom);
+      const uiZoom = Number.isFinite(storedUiZoom) && storedUiZoom >= 50 && storedUiZoom <= 150 ? storedUiZoom : 100;
+      document.documentElement.style.setProperty("--ui-zoom", uiZoom / 100);
     }
   </script>
 </head>
@@ -105,6 +110,13 @@
         <span class="duration-hint" id="panelOpacityValue"></span>
       </div>
       <input class="opacity-slider" id="panelOpacitySlider" type="range" min="0" max="100" step="1" aria-label="버튼 투명도" />
+    </div>
+    <div class="opacity-setting ui-zoom-setting">
+      <div class="opacity-setting-header">
+        <span class="control-label">화면 비율</span>
+        <span class="duration-hint" id="uiZoomValue"></span>
+      </div>
+      <input class="opacity-slider" id="uiZoomSlider" type="range" min="50" max="150" step="5" aria-label="화면 비율" />
     </div>
     <div class="opacity-setting timers-per-row-setting">
       <div class="opacity-setting-header">

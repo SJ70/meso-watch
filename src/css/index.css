@@ -93,7 +93,8 @@ header {
   display: none;
 }
 
-.timers-per-row-setting {
+.timers-per-row-setting,
+.ui-zoom-setting {
   display: none;
 }
 

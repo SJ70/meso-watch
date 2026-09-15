@@ -13,6 +13,9 @@ export const TIMER_ICON_NAMES = [
 export const DEFAULT_MASTER_VOLUME = 50;
 export const DEFAULT_TIMER_VOLUME = 100;
 export const DEFAULT_TIMERS_PER_ROW = 3;
+export const DEFAULT_UI_ZOOM = 100;
+export const MIN_UI_ZOOM = 50;
+export const MAX_UI_ZOOM = 150;
 
 export const DEFAULT_TIMER_MINUTES = 1;
 
