@@ -416,14 +416,18 @@ function loadTimerAlarmRepeatUnlimited(id) {
   return raw === "true";
 }
 
+// "무제한" isn't a real infinite loop - it's just a very large finite count,
+// so notifyDone's countdown logic stays the same either way.
+const UNLIMITED_ALARM_REPEAT_COUNT = 9999;
+
 function alarmRepeatMax(timer) {
-  return timer.alarmRepeatUnlimited ? Infinity : timer.alarmRepeatCount;
+  return timer.alarmRepeatUnlimited ? UNLIMITED_ALARM_REPEAT_COUNT : timer.alarmRepeatCount;
 }
 
 function buildTimer(id, totalMs, fallbackIndex = null) {
   const name = localStorage.getItem(`meso-watch-timer-${id}-name`)
     || (fallbackIndex === null ? defaultTimerName(null) : `타이머 ${fallbackIndex + 1}`);
-  return { id, name, totalMs, remainingSeconds: Math.floor(totalMs / 1000), remainingMs: totalMs, timerId: null, alarmIntervalId: null, isAlarming: false, shortcut: loadShortcut(id), icon: loadTimerIcon(id), volume: loadTimerVolume(id), alarmType: loadTimerAlarmType(id), alarmRepeatCount: loadTimerAlarmRepeatCount(id), alarmRepeatUnlimited: loadTimerAlarmRepeatUnlimited(id), isDraft: false };
+  return { id, name, totalMs, remainingSeconds: Math.floor(totalMs / 1000), remainingMs: totalMs, timerId: null, alarmIntervalId: null, remainingAlarmCount: 0, shortcut: loadShortcut(id), icon: loadTimerIcon(id), volume: loadTimerVolume(id), alarmType: loadTimerAlarmType(id), alarmRepeatCount: loadTimerAlarmRepeatCount(id), alarmRepeatUnlimited: loadTimerAlarmRepeatUnlimited(id), isDraft: false };
 }
 
 function createTimer(minutes = DEFAULT_TIMER_MINUTES) {
@@ -481,7 +485,7 @@ function updateTimerElement(timer) {
   element.querySelector(".timer-shortcut-badge").textContent = formatShortcut(timer.shortcut);
   element.classList.toggle("is-running", Boolean(timer.timerId));
   element.classList.toggle("is-finished", Boolean(timer.isFinished));
-  element.classList.toggle("is-alarming", Boolean(timer.isAlarming));
+  element.classList.toggle("is-alarming", timer.remainingAlarmCount > 0);
   element.classList.toggle("has-progress", timer.remainingMs < timer.totalMs);
   const progress = timer.totalMs > 0 ? timer.remainingMs / timer.totalMs : 0;
   element.style.setProperty("--progress-fraction", progress);
