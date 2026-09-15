@@ -496,13 +496,25 @@ function bounceTimerCard(timer) {
 function updateTimerElement(timer) {
   const element = getTimerElement(timer);
   if (!element) return;
-  element.querySelector(".timer-time").textContent = formatTime(timer.remainingSeconds);
-  element.querySelector(".timer-ms").textContent = formatMs(timer.remainingMs);
-  const settingsModalOpen = element.querySelector(".settings-modal")?.open;
-  if (recordingElement !== element && !settingsModalOpen) {
-    element.querySelector(".shortcut-button").value = formatShortcut(timer.shortcut);
+  // getTimerElement can return a freshly re-queried element (e.g. after
+  // renderAllTimers() rebuilds the list) whose sub-elements weren't cached
+  // by this timer's own renderTimer() call - fall back to a live query in
+  // that case rather than touching a stale cache from the old element.
+  const cache = timer.elements?.settingsModal?.isConnected ? timer.elements : null;
+  const timeEl = cache ? cache.timeEl : element.querySelector(".timer-time");
+  const msEl = cache ? cache.msEl : element.querySelector(".timer-ms");
+  const settingsModal = cache ? cache.settingsModal : element.querySelector(".settings-modal");
+  const shortcutButtonEl = cache ? cache.shortcutButtonEl : element.querySelector(".shortcut-button");
+  const shortcutBadgeEl = cache ? cache.shortcutBadgeEl : element.querySelector(".timer-shortcut-badge");
+  const startButtonEl = cache ? cache.startButtonEl : element.querySelector(".start-button");
+  const pauseButtonEl = cache ? cache.pauseButtonEl : element.querySelector(".pause-button");
+
+  timeEl.textContent = formatTime(timer.remainingSeconds);
+  msEl.textContent = formatMs(timer.remainingMs);
+  if (recordingElement !== element && !settingsModal?.open) {
+    shortcutButtonEl.value = formatShortcut(timer.shortcut);
   }
-  element.querySelector(".timer-shortcut-badge").textContent = formatShortcut(timer.shortcut);
+  shortcutBadgeEl.textContent = formatShortcut(timer.shortcut);
   element.classList.toggle("is-running", Boolean(timer.timerId));
   element.classList.toggle("is-finished", Boolean(timer.isFinished));
   element.style.setProperty("--alarm-blink-count", alarmRepeatMax(timer));
@@ -510,8 +522,8 @@ function updateTimerElement(timer) {
   element.classList.toggle("has-progress", timer.remainingMs < timer.totalMs);
   const progress = timer.totalMs > 0 ? timer.remainingMs / timer.totalMs : 0;
   element.style.setProperty("--progress-fraction", progress);
-  element.querySelector(".start-button").disabled = Boolean(timer.timerId);
-  element.querySelector(".pause-button").disabled = !timer.timerId && !timer.isFinished;
+  startButtonEl.disabled = Boolean(timer.timerId);
+  pauseButtonEl.disabled = !timer.timerId && !timer.isFinished;
 }
 
 function renderTimer(timer, target = timerList) {
@@ -635,6 +647,18 @@ function renderTimer(timer, target = timerList) {
 
   const settingsModal = element.querySelector(".settings-modal");
   registerDialogShrinkOnClose(settingsModal);
+  // updateTimerElement runs on every tick (up to display refresh rate while
+  // any timer is running) - cache the sub-elements it touches once here
+  // instead of re-querying the DOM on every single call.
+  timer.elements = {
+    settingsModal,
+    timeEl: element.querySelector(".timer-time"),
+    msEl: element.querySelector(".timer-ms"),
+    shortcutButtonEl: element.querySelector(".shortcut-button"),
+    shortcutBadgeEl: element.querySelector(".timer-shortcut-badge"),
+    startButtonEl: element.querySelector(".start-button"),
+    pauseButtonEl: element.querySelector(".pause-button"),
+  };
   let draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon, volume: timer.volume, alarmType: timer.alarmType, alarmRepeatCount: timer.alarmRepeatCount, alarmRepeatUnlimited: timer.alarmRepeatUnlimited, autoRestart: timer.autoRestart };
   function updateIconOptionsUi() {
     element.querySelectorAll(".icon-option").forEach((button) => {
@@ -941,8 +965,19 @@ function tickTimer(timer) {
 const runningTimers = new Set();
 let tickLoopHandle = null;
 
-function runTickLoop() {
-  runningTimers.forEach((timer) => tickTimer(timer));
+// rAF still fires at full display refresh rate (needed for its automatic
+// hidden/occluded throttling), but a countdown display doesn't need actual
+// DOM work done that often - skip most frames and only really tick at this
+// rate. remainingMs is always computed fresh from Date.now() in tickTimer,
+// so skipped frames don't cost any accuracy, only update frequency.
+const TICK_INTERVAL_MS = 50;
+let lastTickTime = 0;
+
+function runTickLoop(now) {
+  if (now - lastTickTime >= TICK_INTERVAL_MS) {
+    lastTickTime = now;
+    runningTimers.forEach((timer) => tickTimer(timer));
+  }
   tickLoopHandle = runningTimers.size > 0 ? requestAnimationFrame(runTickLoop) : null;
 }
 
