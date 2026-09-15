@@ -863,7 +863,13 @@ function tickTimer(timer) {
     timer.remainingMs = 0;
     timer.isFinished = true;
     updateTimerElement(timer);
-    notifyDone(timer, () => volume, () => bounceTimerCard(timer), alarmRepeatMax(timer), () => updateTimerElement(timer));
+    notifyDone(timer, () => volume, () => bounceTimerCard(timer), alarmRepeatMax(timer), () => {
+      // Once the alarm has fully run its course (all repeats played),
+      // return the card to a stopped, ready-to-start state showing the
+      // original duration instead of sitting at 00:00 indefinitely.
+      if (timer.remainingAlarmCount <= 0) resetTimer(timer);
+      else updateTimerElement(timer);
+    });
     return;
   }
   updateTimerElement(timer);
