@@ -89,11 +89,11 @@ ipcMain.handle("resize-window", (_event, { width: requestedWidth, height: reques
   const workArea = screen.getDisplayMatching(bounds).workArea;
   const width = Math.min(Math.max(Math.round(requestedWidth), 200), workArea.width);
   const height = Math.min(Math.max(Math.round(requestedHeight), 120), workArea.height - 40);
-  // Keeps x/y fixed and grows right/down; if that would push an edge past
-  // the screen, pull the opposite edge in instead so it stays visible.
-  const x = Math.min(bounds.x, workArea.x + workArea.width - width);
-  const y = Math.min(bounds.y, workArea.y + workArea.height - height);
-  if (width === bounds.width && height === bounds.height && x === bounds.x && y === bounds.y) return;
+  // Keeps x/y fixed and grows right/down, even past the bottom/right edge of
+  // the screen - no pulling the window back on-screen when it grows taller.
+  const x = bounds.x;
+  const y = bounds.y;
+  if (width === bounds.width && height === bounds.height) return;
   mainWindow.setBounds({ x, y, width, height: height + 1 });
   mainWindow.setBounds({ x, y, width, height });
 });
