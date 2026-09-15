@@ -773,6 +773,7 @@ function renderTimer(timer, target = timerList) {
   element.querySelector(".modal-save").addEventListener("click", () => {
     cancelShortcutRecording();
     const durationChanged = draft.totalMs !== timer.totalMs;
+    const previousTotalMs = timer.totalMs;
     timer.name = draft.name;
     timer.totalMs = draft.totalMs;
     timer.shortcut = draft.shortcut;
@@ -791,7 +792,7 @@ function renderTimer(timer, target = timerList) {
     localStorage.setItem(`meso-watch-timer-${timer.id}-auto-restart`, String(timer.autoRestart));
     element.querySelector(".timer-label").textContent = timer.name;
     element.style.setProperty("--timer-icon", timerIconUrl(timer));
-    if (durationChanged) resetTimer(timer);
+    if (durationChanged) adjustTimerDuration(timer, previousTotalMs);
     if (timer.isDraft) {
       timer.isDraft = false;
       timers.push(timer);
@@ -945,6 +946,27 @@ function resetTimer(timer) {
   timer.remainingMs = timer.totalMs;
   timer.remainingSeconds = Math.floor(timer.totalMs / 1000);
   timer.isFinished = false;
+  updateTimerElement(timer);
+}
+
+// Editing the duration of a timer that's mid-countdown (or paused partway
+// through) shouldn't throw away its progress - shift the remaining time by
+// however much the total just changed by, so elapsed time stays the same.
+function adjustTimerDuration(timer, previousTotalMs) {
+  // Nothing in-progress to preserve for a timer that hasn't started counting
+  // down this duration yet, or that already finished - reset to the new length.
+  if (timer.isFinished || timer.remainingMs >= previousTotalMs) {
+    resetTimer(timer);
+    return;
+  }
+  const newRemainingMs = Math.max(0, timer.remainingMs + (timer.totalMs - previousTotalMs));
+  timer.remainingMs = newRemainingMs;
+  timer.remainingSeconds = Math.floor(newRemainingMs / 1000);
+  if (timer.timerId) {
+    // Still running - retarget the end time so the existing 10ms tick loop
+    // picks up the rescaled remaining time.
+    timer.endTimestamp = Date.now() + newRemainingMs;
+  }
   updateTimerElement(timer);
 }
 
