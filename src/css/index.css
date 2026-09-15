@@ -843,6 +843,18 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.auto-restart-setting {
+  margin-bottom: 10px;
+}
+
+.auto-restart-setting .opacity-setting-header {
+  align-items: center;
+}
+
+.auto-restart-setting .toggle-switch {
+  margin-top: 0;
+}
+
 .toggle-switch {
   display: inline-flex;
   align-items: center;

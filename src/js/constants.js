@@ -40,6 +40,8 @@ export const MAX_ALARM_REPEAT_COUNT = 10;
 export const DEFAULT_ALARM_REPEAT_COUNT = 1;
 export const DEFAULT_ALARM_REPEAT_UNLIMITED = false;
 
+export const DEFAULT_TIMER_AUTO_RESTART = false;
+
 // Seeded once for a fresh install (see meso-watch-defaults-seeded in app.js).
 export const DEFAULT_TIMERS = [
   { name: "몬스터 리젠", totalMs: 7500, alarmType: "beep", icon: "attack.png" },

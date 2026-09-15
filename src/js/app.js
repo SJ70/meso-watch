@@ -15,6 +15,7 @@ import {
   MAX_ALARM_REPEAT_COUNT,
   DEFAULT_ALARM_REPEAT_COUNT,
   DEFAULT_ALARM_REPEAT_UNLIMITED,
+  DEFAULT_TIMER_AUTO_RESTART,
   DEFAULT_TIMERS,
 } from "./constants.js";
 import { openDialog, registerDialogShrinkOnClose } from "./dialog-utils.js";
@@ -416,6 +417,12 @@ function loadTimerAlarmRepeatUnlimited(id) {
   return raw === "true";
 }
 
+function loadTimerAutoRestart(id) {
+  const raw = localStorage.getItem(`meso-watch-timer-${id}-auto-restart`);
+  if (raw === null) return DEFAULT_TIMER_AUTO_RESTART;
+  return raw === "true";
+}
+
 // "무제한" isn't a real infinite loop - it's just a very large finite count,
 // so notifyDone's countdown logic stays the same either way.
 const UNLIMITED_ALARM_REPEAT_COUNT = 9999;
@@ -424,10 +431,23 @@ function alarmRepeatMax(timer) {
   return timer.alarmRepeatUnlimited ? UNLIMITED_ALARM_REPEAT_COUNT : timer.alarmRepeatCount;
 }
 
+// classList.toggle("is-alarming", true) when it's already true is a no-op,
+// so a refreshed remainingAlarmCount (see notifyDone's "restarted" callback)
+// wouldn't otherwise restart the CSS animation to match the new count -
+// forcing it off, a reflow, then back on restarts it from iteration 1.
+function restartAlarmBlink(timer) {
+  const element = getTimerElement(timer);
+  if (!element) return;
+  element.style.setProperty("--alarm-blink-count", alarmRepeatMax(timer));
+  element.classList.remove("is-alarming");
+  void element.offsetWidth;
+  element.classList.add("is-alarming");
+}
+
 function buildTimer(id, totalMs, fallbackIndex = null) {
   const name = localStorage.getItem(`meso-watch-timer-${id}-name`)
     || (fallbackIndex === null ? defaultTimerName(null) : `타이머 ${fallbackIndex + 1}`);
-  return { id, name, totalMs, remainingSeconds: Math.floor(totalMs / 1000), remainingMs: totalMs, timerId: null, alarmIntervalId: null, remainingAlarmCount: 0, shortcut: loadShortcut(id), icon: loadTimerIcon(id), volume: loadTimerVolume(id), alarmType: loadTimerAlarmType(id), alarmRepeatCount: loadTimerAlarmRepeatCount(id), alarmRepeatUnlimited: loadTimerAlarmRepeatUnlimited(id), isDraft: false };
+  return { id, name, totalMs, remainingSeconds: Math.floor(totalMs / 1000), remainingMs: totalMs, timerId: null, alarmIntervalId: null, remainingAlarmCount: 0, shortcut: loadShortcut(id), icon: loadTimerIcon(id), volume: loadTimerVolume(id), alarmType: loadTimerAlarmType(id), alarmRepeatCount: loadTimerAlarmRepeatCount(id), alarmRepeatUnlimited: loadTimerAlarmRepeatUnlimited(id), autoRestart: loadTimerAutoRestart(id), isDraft: false };
 }
 
 function createTimer(minutes = DEFAULT_TIMER_MINUTES) {
@@ -571,6 +591,15 @@ function renderTimer(timer, target = timerList) {
           <span class="toggle-switch-label">무제한</span>
         </label>
       </div>
+      <div class="auto-restart-setting">
+        <div class="opacity-setting-header">
+          <span class="control-label">자동 재시작</span>
+          <label class="toggle-switch">
+            <input class="auto-restart-checkbox" type="checkbox"${timer.autoRestart ? " checked" : ""} aria-label="타이머 ${timer.id} 자동 재시작" />
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </label>
+        </div>
+      </div>
       <div class="opacity-setting volume-setting">
         <div class="opacity-setting-header">
           <span class="control-label">알람 볼륨</span>
@@ -602,7 +631,7 @@ function renderTimer(timer, target = timerList) {
 
   const settingsModal = element.querySelector(".settings-modal");
   registerDialogShrinkOnClose(settingsModal);
-  let draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon, volume: timer.volume, alarmType: timer.alarmType, alarmRepeatCount: timer.alarmRepeatCount, alarmRepeatUnlimited: timer.alarmRepeatUnlimited };
+  let draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon, volume: timer.volume, alarmType: timer.alarmType, alarmRepeatCount: timer.alarmRepeatCount, alarmRepeatUnlimited: timer.alarmRepeatUnlimited, autoRestart: timer.autoRestart };
   function updateIconOptionsUi() {
     element.querySelectorAll(".icon-option").forEach((button) => {
       button.classList.toggle("is-selected", button.dataset.icon === draft.icon);
@@ -623,8 +652,11 @@ function renderTimer(timer, target = timerList) {
     element.querySelector(".alarm-repeat-count-value").textContent = `${draft.alarmRepeatCount}회`;
     element.querySelector(".alarm-repeat-unlimited-checkbox").checked = draft.alarmRepeatUnlimited;
   }
+  function updateAutoRestartSettingUi() {
+    element.querySelector(".auto-restart-checkbox").checked = draft.autoRestart;
+  }
   function resetDraftFromTimer() {
-    draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon, volume: timer.volume, alarmType: timer.alarmType, alarmRepeatCount: timer.alarmRepeatCount, alarmRepeatUnlimited: timer.alarmRepeatUnlimited };
+    draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon, volume: timer.volume, alarmType: timer.alarmType, alarmRepeatCount: timer.alarmRepeatCount, alarmRepeatUnlimited: timer.alarmRepeatUnlimited, autoRestart: timer.autoRestart };
     element.querySelector(".name-input").value = timer.name;
     element.querySelector(".minutes-input").value = Math.floor(timer.totalMs / 60000);
     element.querySelector(".seconds-input").value = Math.floor(timer.totalMs / 1000) % 60;
@@ -633,6 +665,7 @@ function renderTimer(timer, target = timerList) {
     updateVolumeSettingUi();
     updateAlarmTypeSettingUi();
     updateAlarmRepeatSettingUi();
+    updateAutoRestartSettingUi();
   }
   element.querySelectorAll(".icon-option").forEach((button) => button.addEventListener("click", () => {
     draft.icon = button.dataset.icon;
@@ -656,6 +689,9 @@ function renderTimer(timer, target = timerList) {
   element.querySelector(".alarm-repeat-unlimited-checkbox").addEventListener("change", (event) => {
     draft.alarmRepeatUnlimited = event.target.checked;
     updateAlarmRepeatSettingUi();
+  });
+  element.querySelector(".auto-restart-checkbox").addEventListener("change", (event) => {
+    draft.autoRestart = event.target.checked;
   });
   element.querySelectorAll(".select-wrapper").forEach((wrapper) => wrapper.appendChild(createIconElement("chevron-down", { width: 16, height: 16 })));
   element.querySelector(".settings-toggle").appendChild(createIconElement("settings", { width: 16, height: 16 }));
@@ -729,6 +765,7 @@ function renderTimer(timer, target = timerList) {
       localStorage.removeItem(`meso-watch-timer-${timer.id}-alarm-type`);
       localStorage.removeItem(`meso-watch-timer-${timer.id}-alarm-repeat-count`);
       localStorage.removeItem(`meso-watch-timer-${timer.id}-alarm-repeat-unlimited`);
+      localStorage.removeItem(`meso-watch-timer-${timer.id}-auto-restart`);
       if (timer.id === nextTimerId - 1) setNextTimerId(nextTimerId - 1);
       element.parentElement?.remove();
     }
@@ -744,12 +781,14 @@ function renderTimer(timer, target = timerList) {
     timer.alarmType = draft.alarmType;
     timer.alarmRepeatCount = draft.alarmRepeatCount;
     timer.alarmRepeatUnlimited = draft.alarmRepeatUnlimited;
+    timer.autoRestart = draft.autoRestart;
     localStorage.setItem(`meso-watch-timer-${timer.id}-name`, timer.name);
     localStorage.setItem(`meso-watch-timer-${timer.id}-icon`, timer.icon);
     localStorage.setItem(`meso-watch-timer-${timer.id}-volume`, String(timer.volume));
     localStorage.setItem(`meso-watch-timer-${timer.id}-alarm-type`, timer.alarmType);
     localStorage.setItem(`meso-watch-timer-${timer.id}-alarm-repeat-count`, String(timer.alarmRepeatCount));
     localStorage.setItem(`meso-watch-timer-${timer.id}-alarm-repeat-unlimited`, String(timer.alarmRepeatUnlimited));
+    localStorage.setItem(`meso-watch-timer-${timer.id}-auto-restart`, String(timer.autoRestart));
     element.querySelector(".timer-label").textContent = timer.name;
     element.style.setProperty("--timer-icon", timerIconUrl(timer));
     if (durationChanged) resetTimer(timer);
@@ -781,6 +820,7 @@ function renderTimer(timer, target = timerList) {
       localStorage.removeItem(`meso-watch-timer-${timer.id}-alarm-type`);
       localStorage.removeItem(`meso-watch-timer-${timer.id}-alarm-repeat-count`);
       localStorage.removeItem(`meso-watch-timer-${timer.id}-alarm-repeat-unlimited`);
+      localStorage.removeItem(`meso-watch-timer-${timer.id}-auto-restart`);
       if (timer.id === nextTimerId - 1) setNextTimerId(nextTimerId - 1);
       element.parentElement?.remove();
     }
@@ -863,13 +903,23 @@ function tickTimer(timer) {
     timer.remainingMs = 0;
     timer.isFinished = true;
     updateTimerElement(timer);
-    notifyDone(timer, () => volume, () => bounceTimerCard(timer), alarmRepeatMax(timer), () => {
-      // Once the alarm has fully run its course (all repeats played),
-      // return the card to a stopped, ready-to-start state showing the
-      // original duration instead of sitting at 00:00 indefinitely.
-      if (timer.remainingAlarmCount <= 0) resetTimer(timer);
+    // The alarm (sound + blink) runs on its own repeat-count schedule
+    // regardless of auto-restart - it's a separate notification, not
+    // something the countdown needs to wait on before starting over.
+    notifyDone(timer, () => volume, () => bounceTimerCard(timer), alarmRepeatMax(timer), (restarted) => {
+      if (restarted) restartAlarmBlink(timer);
+      // Once the alarm has fully run its course, return the card to a
+      // stopped state showing the original duration instead of sitting at
+      // 00:00 indefinitely. If auto-restart already kicked the countdown
+      // back off below, isFinished is already false, so this is a no-op.
+      if (timer.remainingAlarmCount <= 0 && timer.isFinished) resetTimer(timer);
       else updateTimerElement(timer);
     });
+    if (timer.autoRestart) {
+      timer.remainingMs = timer.totalMs;
+      timer.remainingSeconds = Math.floor(timer.totalMs / 1000);
+      startTimer(timer);
+    }
     return;
   }
   updateTimerElement(timer);
@@ -919,6 +969,7 @@ function removeTimer(timer) {
   localStorage.removeItem(`meso-watch-timer-${timer.id}-alarm-type`);
   localStorage.removeItem(`meso-watch-timer-${timer.id}-alarm-repeat-count`);
   localStorage.removeItem(`meso-watch-timer-${timer.id}-alarm-repeat-unlimited`);
+  localStorage.removeItem(`meso-watch-timer-${timer.id}-auto-restart`);
   timers = timers.filter((item) => item !== timer);
   timer.element = null;
   renderAllTimers();

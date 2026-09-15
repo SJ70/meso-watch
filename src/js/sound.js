@@ -93,10 +93,14 @@ export function effectiveVolume(masterVolume, timerVolume) {
   return Math.round(masterVolume * (timerVolume / 100));
 }
 
-// onStateChange fires whenever timer.remainingAlarmCount changes - the blink
-// effect (CSS .is-alarming, driven off remainingAlarmCount > 0) tracks it, so
-// it's consumed one per second right alongside the beeps instead of running
-// on a separate isAlarming on/off flag.
+// onStateChange(restarted) fires whenever timer.remainingAlarmCount changes -
+// the blink effect (CSS .is-alarming, driven off remainingAlarmCount > 0)
+// tracks it, so it's consumed one per second right alongside the beeps
+// instead of running on a separate isAlarming on/off flag. restarted is true
+// only on the call that (re)seeds remainingAlarmCount to maxRepeats, so the
+// caller knows to restart the blink animation from scratch (see
+// restartAlarmBlink in app.js) rather than let it keep running toward its
+// old, now-stale iteration count.
 export function notifyDone(timer, getMasterVolume, onBeep, maxRepeats, onStateChange) {
   // Read timer.volume/alarmType and the master volume fresh on every beep,
   // not just once at start, so changing the volume while the alarm is
@@ -105,18 +109,25 @@ export function notifyDone(timer, getMasterVolume, onBeep, maxRepeats, onStateCh
     playNotifySound(effectiveVolume(getMasterVolume(), timer.volume), timer.alarmType);
     onBeep?.();
   };
+  // If a previous alarm cycle is still counting down (e.g. auto-restart
+  // finished the timer again before the last alarm finished repeating),
+  // just refresh the remaining count onto the existing interval instead of
+  // starting a second one - two intervals both decrementing/playing would
+  // double up beeps and desync the blink from the actual remaining count.
+  const alreadyRunning = Boolean(timer.alarmIntervalId);
   timer.remainingAlarmCount = maxRepeats;
-  onStateChange?.();
+  onStateChange?.(true);
   play();
+  if (alreadyRunning) return;
   timer.alarmIntervalId = setInterval(() => {
     timer.remainingAlarmCount -= 1;
     if (timer.remainingAlarmCount <= 0) {
       stopAlarm(timer);
-      onStateChange?.();
+      onStateChange?.(false);
       return;
     }
     play();
-    onStateChange?.();
+    onStateChange?.(false);
   }, 1000);
 }
 
