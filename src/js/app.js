@@ -930,16 +930,34 @@ function tickTimer(timer) {
   updateTimerElement(timer);
 }
 
+// A separate setInterval(10ms) per running timer forces the CPU out of idle
+// power states ~100x/sec per timer (Windows flags this as high "power
+// usage", and it multiplies with every extra timer running at once). One
+// shared requestAnimationFrame loop ticks every running timer per paint
+// instead: it matches the display's own refresh rate rather than an
+// arbitrary fixed rate, is scheduled by the browser's own efficient timer
+// rather than a raw OS timer, and - unlike setInterval - is automatically
+// throttled or paused while the window is minimized or fully occluded.
+const runningTimers = new Set();
+let tickLoopHandle = null;
+
+function runTickLoop() {
+  runningTimers.forEach((timer) => tickTimer(timer));
+  tickLoopHandle = runningTimers.size > 0 ? requestAnimationFrame(runTickLoop) : null;
+}
+
 function startTimer(timer) {
   if (timer.timerId || timer.remainingMs <= 0) return;
   timer.isFinished = false;
   timer.endTimestamp = Date.now() + timer.remainingMs;
-  timer.timerId = setInterval(() => tickTimer(timer), 10);
+  timer.timerId = true;
+  runningTimers.add(timer);
+  if (tickLoopHandle === null) tickLoopHandle = requestAnimationFrame(runTickLoop);
   updateTimerElement(timer);
 }
 
 function stopTimer(timer) {
-  clearInterval(timer.timerId);
+  runningTimers.delete(timer);
   timer.timerId = null;
   updateTimerElement(timer);
 }
