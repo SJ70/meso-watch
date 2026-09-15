@@ -93,7 +93,10 @@ export function effectiveVolume(masterVolume, timerVolume) {
   return Math.round(masterVolume * (timerVolume / 100));
 }
 
-export function notifyDone(timer, getMasterVolume, onBeep) {
+// onStateChange fires whenever timer.isAlarming flips - the blink effect
+// (CSS .is-alarming) tracks it, so it stays in sync with the same repeat
+// count as the sound instead of running indefinitely on its own.
+export function notifyDone(timer, getMasterVolume, onBeep, maxRepeats = Infinity, onStateChange) {
   // Read timer.volume/alarmType and the master volume fresh on every beep,
   // not just once at start, so changing the volume while the alarm is
   // already repeating takes effect on the next beep instead of the next timer.
@@ -101,11 +104,28 @@ export function notifyDone(timer, getMasterVolume, onBeep) {
     playNotifySound(effectiveVolume(getMasterVolume(), timer.volume), timer.alarmType);
     onBeep?.();
   };
+  timer.isAlarming = true;
+  onStateChange?.();
   play();
-  timer.alarmIntervalId = setInterval(play, 1000);
+  if (maxRepeats <= 1) {
+    timer.isAlarming = false;
+    onStateChange?.();
+    return;
+  }
+  let playCount = 1;
+  timer.alarmIntervalId = setInterval(() => {
+    if (playCount >= maxRepeats) {
+      stopAlarm(timer);
+      onStateChange?.();
+      return;
+    }
+    play();
+    playCount++;
+  }, 1000);
 }
 
 export function stopAlarm(timer) {
   clearInterval(timer.alarmIntervalId);
   timer.alarmIntervalId = null;
+  timer.isAlarming = false;
 }

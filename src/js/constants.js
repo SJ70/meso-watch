@@ -32,6 +32,14 @@ export const ALARM_TYPES = [
 ];
 export const DEFAULT_ALARM_TYPE = ALARM_TYPES[0].id;
 
+// The repeat count slider only covers a finite range; "무제한" (unlimited)
+// is a separate checkbox that, when on, disables the slider and overrides
+// it to repeat forever.
+export const MIN_ALARM_REPEAT_COUNT = 1;
+export const MAX_ALARM_REPEAT_COUNT = 10;
+export const DEFAULT_ALARM_REPEAT_COUNT = 1;
+export const DEFAULT_ALARM_REPEAT_UNLIMITED = false;
+
 // Seeded once for a fresh install (see meso-watch-defaults-seeded in app.js).
 export const DEFAULT_TIMERS = [
   { name: "몬스터 리젠", totalMs: 7500, alarmType: "beep", icon: "attack.png" },
