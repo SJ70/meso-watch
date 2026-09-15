@@ -12,7 +12,8 @@
     "start": "electron .",
     "dev": "electron .",
     "build": "electron-builder",
-    "release": "dotenv -e .env -- electron-builder --publish always"
+    "release": "dotenv -e .env -- electron-builder --publish always",
+    "postversion": "node scripts/delete-version-tag.js"
   },
   "devDependencies": {
     "dotenv-cli": "^11.0.0",
