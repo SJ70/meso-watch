@@ -42,6 +42,14 @@ export const DEFAULT_ALARM_REPEAT_UNLIMITED = false;
 
 export const DEFAULT_TIMER_AUTO_RESTART = false;
 
+// ids must match the data-progress-style values the CSS in timer-progress.css keys off.
+export const PROGRESS_STYLES = [
+  { id: "ring", label: "링" },
+  { id: "gauge-v", label: "게이지 (세로)" },
+  { id: "gauge-h", label: "게이지 (가로)" },
+];
+export const DEFAULT_PROGRESS_STYLE = PROGRESS_STYLES[0].id;
+
 // Seeded once for a fresh install (see meso-watch-defaults-seeded in app.js).
 export const DEFAULT_TIMERS = [
   { name: "몬스터 리젠", totalMs: 7500, alarmType: "beep", icon: "attack.png" },

@@ -1,0 +1,82 @@
+.timer-card > .timer-progress-visual {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  overflow: visible;
+  transition: opacity 160ms ease;
+}
+
+.timer-card.is-running > .timer-progress-visual,
+.timer-card.has-progress > .timer-progress-visual {
+  opacity: 1;
+}
+
+.timer-card.has-progress:not(.is-running):not(.is-finished) > .timer-progress-visual {
+  opacity: 0.5;
+}
+
+.timer-progress-visual.ring rect {
+  x: 2px;
+  y: 2px;
+  width: calc(100% - 4px);
+  height: calc(100% - 4px);
+  rx: 11px;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 6px;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: calc(1 - var(--progress-fraction, 1));
+  transition: stroke-dashoffset 160ms linear;
+}
+
+/* Only one of the three progress visuals is ever shown, picked by the
+   card's data-progress-style attribute (see updateTimerElement in app.js).
+   Missing/unrecognized data-progress-style (older saved timers) falls back
+   to the ring, matching pre-existing behavior. */
+.timer-card > .timer-progress-visual {
+  display: none;
+}
+
+.timer-card:not([data-progress-style="gauge-v"]):not([data-progress-style="gauge-h"]) > .timer-progress-visual.ring {
+  display: block;
+}
+
+.timer-card[data-progress-style="gauge-v"] > .timer-progress-visual.gauge-v {
+  display: block;
+}
+
+.timer-card[data-progress-style="gauge-h"] > .timer-progress-visual.gauge-h {
+  display: block;
+}
+
+.timer-card > .timer-progress-visual.gauge-v,
+.timer-card > .timer-progress-visual.gauge-h {
+  overflow: hidden;
+  border-radius: 13px;
+}
+
+.timer-progress-visual.gauge-v::after {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: calc(var(--progress-fraction, 1) * 100%);
+  background: var(--accent);
+  content: "";
+  transition: height 160ms linear;
+}
+
+.timer-progress-visual.gauge-h::after {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc(var(--progress-fraction, 1) * 100%);
+  background: var(--accent);
+  content: "";
+  transition: width 160ms linear;
+}

@@ -18,6 +18,7 @@ import {
   DEFAULT_TIMER_AUTO_RESTART,
   DEFAULT_TIMERS,
 } from "./constants.js";
+import { loadTimerProgressStyle, saveTimerProgressStyle, removeTimerProgressStyle, progressStyleSettingMarkup } from "./timerProgress.js";
 import { openDialog, registerDialogShrinkOnClose } from "./dialog-utils.js";
 import { previewAlarmSound, effectiveVolume, notifyDone, stopAlarm } from "./sound.js";
 import { formatShortcut, NORMALIZE_MODIFIER_CODE } from "./shortcuts.js";
@@ -447,7 +448,7 @@ function restartAlarmBlink(timer) {
 function buildTimer(id, totalMs, fallbackIndex = null) {
   const name = localStorage.getItem(`meso-watch-timer-${id}-name`)
     || (fallbackIndex === null ? defaultTimerName(null) : `타이머 ${fallbackIndex + 1}`);
-  return { id, name, totalMs, remainingSeconds: Math.floor(totalMs / 1000), remainingMs: totalMs, timerId: null, alarmIntervalId: null, remainingAlarmCount: 0, shortcut: loadShortcut(id), icon: loadTimerIcon(id), volume: loadTimerVolume(id), alarmType: loadTimerAlarmType(id), alarmRepeatCount: loadTimerAlarmRepeatCount(id), alarmRepeatUnlimited: loadTimerAlarmRepeatUnlimited(id), autoRestart: loadTimerAutoRestart(id), isDraft: false };
+  return { id, name, totalMs, remainingSeconds: Math.floor(totalMs / 1000), remainingMs: totalMs, timerId: null, alarmIntervalId: null, remainingAlarmCount: 0, shortcut: loadShortcut(id), icon: loadTimerIcon(id), volume: loadTimerVolume(id), alarmType: loadTimerAlarmType(id), alarmRepeatCount: loadTimerAlarmRepeatCount(id), alarmRepeatUnlimited: loadTimerAlarmRepeatUnlimited(id), autoRestart: loadTimerAutoRestart(id), progressStyle: loadTimerProgressStyle(id), isDraft: false };
 }
 
 function createTimer(minutes = DEFAULT_TIMER_MINUTES) {
@@ -520,6 +521,7 @@ function updateTimerElement(timer) {
   element.style.setProperty("--alarm-blink-count", alarmRepeatMax(timer));
   element.classList.toggle("is-alarming", timer.remainingAlarmCount > 0);
   element.classList.toggle("has-progress", timer.remainingMs < timer.totalMs);
+  element.dataset.progressStyle = timer.progressStyle;
   const progress = timer.totalMs > 0 ? timer.remainingMs / timer.totalMs : 0;
   element.style.setProperty("--progress-fraction", progress);
   startButtonEl.disabled = Boolean(timer.timerId);
@@ -531,10 +533,13 @@ function renderTimer(timer, target = timerList) {
   element.className = "timer-card";
   element.draggable = true;
   element.dataset.timerId = timer.id;
+  element.dataset.progressStyle = timer.progressStyle;
   element.style.setProperty("--timer-icon", timerIconUrl(timer));
   timer.element = element;
   element.innerHTML = `
-    <svg class="timer-progress-ring" aria-hidden="true"><rect pathLength="1" /></svg>
+    <svg class="timer-progress-visual ring" aria-hidden="true"><rect pathLength="1" /></svg>
+    <div class="timer-progress-visual gauge-v" aria-hidden="true"></div>
+    <div class="timer-progress-visual gauge-h" aria-hidden="true"></div>
     <div class="timer-card-header">
       <span class="timer-shortcut-badge">${formatShortcut(timer.shortcut)}</span>
       <span class="timer-label">${escapeHtml(timer.name)}</span>
@@ -583,6 +588,7 @@ function renderTimer(timer, target = timerList) {
           <button class="duration-preset" type="button" data-ms="1800000">30분</button>
         </div>
       </div>
+      ${progressStyleSettingMarkup(timer)}
       <div class="auto-restart-setting toggle-setting">
         <div class="opacity-setting-header">
           <span class="control-label">타이머 자동 재시작</span>
@@ -659,7 +665,7 @@ function renderTimer(timer, target = timerList) {
     startButtonEl: element.querySelector(".start-button"),
     pauseButtonEl: element.querySelector(".pause-button"),
   };
-  let draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon, volume: timer.volume, alarmType: timer.alarmType, alarmRepeatCount: timer.alarmRepeatCount, alarmRepeatUnlimited: timer.alarmRepeatUnlimited, autoRestart: timer.autoRestart };
+  let draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon, volume: timer.volume, alarmType: timer.alarmType, alarmRepeatCount: timer.alarmRepeatCount, alarmRepeatUnlimited: timer.alarmRepeatUnlimited, autoRestart: timer.autoRestart, progressStyle: timer.progressStyle };
   function updateIconOptionsUi() {
     element.querySelectorAll(".icon-option").forEach((button) => {
       button.classList.toggle("is-selected", button.dataset.icon === draft.icon);
@@ -683,8 +689,11 @@ function renderTimer(timer, target = timerList) {
   function updateAutoRestartSettingUi() {
     element.querySelector(".auto-restart-checkbox").checked = draft.autoRestart;
   }
+  function updateProgressStyleSettingUi() {
+    element.querySelector(".progress-style-select").value = draft.progressStyle;
+  }
   function resetDraftFromTimer() {
-    draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon, volume: timer.volume, alarmType: timer.alarmType, alarmRepeatCount: timer.alarmRepeatCount, alarmRepeatUnlimited: timer.alarmRepeatUnlimited, autoRestart: timer.autoRestart };
+    draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon, volume: timer.volume, alarmType: timer.alarmType, alarmRepeatCount: timer.alarmRepeatCount, alarmRepeatUnlimited: timer.alarmRepeatUnlimited, autoRestart: timer.autoRestart, progressStyle: timer.progressStyle };
     element.querySelector(".name-input").value = timer.name;
     element.querySelector(".minutes-input").value = Math.floor(timer.totalMs / 60000);
     element.querySelector(".seconds-input").value = Math.floor(timer.totalMs / 1000) % 60;
@@ -694,6 +703,7 @@ function renderTimer(timer, target = timerList) {
     updateAlarmTypeSettingUi();
     updateAlarmRepeatSettingUi();
     updateAutoRestartSettingUi();
+    updateProgressStyleSettingUi();
   }
   element.querySelectorAll(".icon-option").forEach((button) => button.addEventListener("click", () => {
     draft.icon = button.dataset.icon;
@@ -720,6 +730,9 @@ function renderTimer(timer, target = timerList) {
   });
   element.querySelector(".auto-restart-checkbox").addEventListener("change", (event) => {
     draft.autoRestart = event.target.checked;
+  });
+  element.querySelector(".progress-style-select").addEventListener("change", (event) => {
+    draft.progressStyle = event.target.value;
   });
   element.querySelectorAll(".select-wrapper").forEach((wrapper) => wrapper.appendChild(createIconElement("chevron-down", { width: 16, height: 16 })));
   element.querySelector(".settings-toggle").appendChild(createIconElement("settings", { width: 16, height: 16 }));
@@ -794,6 +807,7 @@ function renderTimer(timer, target = timerList) {
       localStorage.removeItem(`meso-watch-timer-${timer.id}-alarm-repeat-count`);
       localStorage.removeItem(`meso-watch-timer-${timer.id}-alarm-repeat-unlimited`);
       localStorage.removeItem(`meso-watch-timer-${timer.id}-auto-restart`);
+      removeTimerProgressStyle(timer.id);
       if (timer.id === nextTimerId - 1) setNextTimerId(nextTimerId - 1);
       element.parentElement?.remove();
     }
@@ -811,6 +825,7 @@ function renderTimer(timer, target = timerList) {
     timer.alarmRepeatCount = draft.alarmRepeatCount;
     timer.alarmRepeatUnlimited = draft.alarmRepeatUnlimited;
     timer.autoRestart = draft.autoRestart;
+    timer.progressStyle = draft.progressStyle;
     localStorage.setItem(`meso-watch-timer-${timer.id}-name`, timer.name);
     localStorage.setItem(`meso-watch-timer-${timer.id}-icon`, timer.icon);
     localStorage.setItem(`meso-watch-timer-${timer.id}-volume`, String(timer.volume));
@@ -818,6 +833,7 @@ function renderTimer(timer, target = timerList) {
     localStorage.setItem(`meso-watch-timer-${timer.id}-alarm-repeat-count`, String(timer.alarmRepeatCount));
     localStorage.setItem(`meso-watch-timer-${timer.id}-alarm-repeat-unlimited`, String(timer.alarmRepeatUnlimited));
     localStorage.setItem(`meso-watch-timer-${timer.id}-auto-restart`, String(timer.autoRestart));
+    saveTimerProgressStyle(timer);
     element.querySelector(".timer-label").textContent = timer.name;
     element.style.setProperty("--timer-icon", timerIconUrl(timer));
     if (durationChanged) adjustTimerDuration(timer, previousTotalMs);
@@ -850,6 +866,7 @@ function renderTimer(timer, target = timerList) {
       localStorage.removeItem(`meso-watch-timer-${timer.id}-alarm-repeat-count`);
       localStorage.removeItem(`meso-watch-timer-${timer.id}-alarm-repeat-unlimited`);
       localStorage.removeItem(`meso-watch-timer-${timer.id}-auto-restart`);
+      removeTimerProgressStyle(timer.id);
       if (timer.id === nextTimerId - 1) setNextTimerId(nextTimerId - 1);
       element.parentElement?.remove();
     }
@@ -1049,6 +1066,7 @@ function removeTimer(timer) {
   localStorage.removeItem(`meso-watch-timer-${timer.id}-alarm-repeat-count`);
   localStorage.removeItem(`meso-watch-timer-${timer.id}-alarm-repeat-unlimited`);
   localStorage.removeItem(`meso-watch-timer-${timer.id}-auto-restart`);
+  removeTimerProgressStyle(timer.id);
   timers = timers.filter((item) => item !== timer);
   timer.element = null;
   renderAllTimers();

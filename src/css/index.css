@@ -253,41 +253,6 @@ h1 {
   pointer-events: auto;
 }
 
-.timer-card > .timer-progress-ring {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  overflow: visible;
-  transition: opacity 160ms ease;
-}
-
-.timer-card.is-running > .timer-progress-ring,
-.timer-card.has-progress > .timer-progress-ring {
-  opacity: 1;
-}
-
-.timer-card.has-progress:not(.is-running):not(.is-finished) > .timer-progress-ring {
-  opacity: 0.5;
-}
-
-.timer-progress-ring rect {
-  x: 2px;
-  y: 2px;
-  width: calc(100% - 4px);
-  height: calc(100% - 4px);
-  rx: 11px;
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 6px;
-  stroke-linecap: round;
-  stroke-dasharray: 1;
-  stroke-dashoffset: calc(1 - var(--progress-fraction, 1));
-  transition: stroke-dashoffset 160ms linear;
-}
-
 .timer-card > * {
   position: relative;
   z-index: 1;
@@ -818,7 +783,8 @@ button:disabled {
   margin-bottom: 8px;
 }
 
-.alarm-type-setting {
+.alarm-type-setting,
+.progress-style-setting {
   display: grid;
   grid-template-columns: 1fr;
   gap: 3px;
@@ -826,7 +792,8 @@ button:disabled {
   margin-bottom: 10px;
 }
 
-.alarm-type-setting .control-label {
+.alarm-type-setting .control-label,
+.progress-style-setting .control-label {
   margin-bottom: 0;
 }
 
@@ -921,7 +888,8 @@ button:disabled {
   pointer-events: none;
 }
 
-.alarm-type-select {
+.alarm-type-select,
+.progress-style-select {
   width: 100%;
   box-sizing: border-box;
   padding: 6px 28px 6px 8px;
@@ -936,7 +904,8 @@ button:disabled {
   -webkit-appearance: none;
 }
 
-.alarm-type-select:focus {
+.alarm-type-select:focus,
+.progress-style-select:focus {
   outline: none;
   border-color: var(--accent);
 }
