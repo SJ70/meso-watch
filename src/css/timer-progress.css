@@ -14,7 +14,8 @@
   opacity: 1;
 }
 
-.timer-card.has-progress:not(.is-running):not(.is-finished) > .timer-progress-visual {
+.timer-card.has-progress:not(.is-running):not(.is-finished) > .timer-progress-visual,
+.timer-card.has-progress.is-restart-pending > .timer-progress-visual {
   opacity: 0.5;
 }
 
@@ -79,4 +80,12 @@
   background: var(--accent);
   content: "";
   transition: width 160ms linear;
+}
+
+/* Restart delay: --progress-fraction jumps straight to 1, and stretching
+   the transition to the delay's length turns that into the refill animation. */
+.timer-card.is-restart-pending > .timer-progress-visual.ring rect,
+.timer-card.is-restart-pending > .timer-progress-visual.gauge-v::after,
+.timer-card.is-restart-pending > .timer-progress-visual.gauge-h::after {
+  transition-duration: var(--restart-delay, 0s);
 }

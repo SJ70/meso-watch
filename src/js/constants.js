@@ -42,6 +42,13 @@ export const DEFAULT_ALARM_REPEAT_UNLIMITED = false;
 
 export const DEFAULT_TIMER_AUTO_RESTART = false;
 
+// Seconds to sit at 00:00 before a restart (manual or auto) kicks the
+// countdown back off.
+export const MIN_RESTART_DELAY = 0;
+export const MAX_RESTART_DELAY = 10;
+export const RESTART_DELAY_STEP = 0.5;
+export const DEFAULT_RESTART_DELAY = 0;
+
 // ids must match the data-progress-style values the CSS in timer-progress.css keys off.
 export const PROGRESS_STYLES = [
   { id: "ring", label: "링" },
