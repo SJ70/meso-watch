@@ -1,13 +1,15 @@
 export const NO_ICON = "none";
 
-export const TIMER_ICON_NAMES = [
-  NO_ICON,
-  "attack.png",
-  "exp.png",
-  "sol-janus.png",
-  "hexa-booster.webp",
-  "rune.png",
-  "river.png",
+// Bundled background images in public/icons. A timer saves the file name
+// (not the list position), so reordering or adding entries is safe; renaming
+// a file would orphan timers that saved the old name.
+export const TIMER_ICONS = [
+  { file: "attack.png", label: "공격" },
+  { file: "exp.png", label: "추가 경험치 쿠폰" },
+  { file: "sol-janus.png", label: "솔 야누스 : 새벽" },
+  { file: "hexa-booster.webp", label: "HEXA 부스터" },
+  { file: "rune.png", label: "룬" },
+  { file: "river.png", label: "발현 : 강줄기 흐르는 곳" },
 ];
 
 export const DEFAULT_MASTER_VOLUME = 50;

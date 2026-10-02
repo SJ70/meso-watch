@@ -191,6 +191,16 @@ h1 {
   pointer-events: none;
 }
 
+/* An uploaded background image can be any size/shape and usually isn't
+   pixel art: fit it whole inside the same centered 128px box the bundled
+   ones fill (instead of stretching it to 128x128) and scale it smoothly. */
+.timer-card.has-custom-icon::before {
+  inset: calc(50% - 64px);
+  background-size: contain;
+  border-radius: 0;
+  image-rendering: auto;
+}
+
 .timer-card.is-dragging {
   opacity: 0.88;
   transform: translate(-8px, -8px);
@@ -699,15 +709,16 @@ h1 {
   border-color: var(--accent);
 }
 
-/* Shown under the alarm sound dropdown when an upload/delete fails. */
-.custom-sound-error {
+/* Shown under an upload-backed dropdown (alarm sound, background image)
+   when an upload/delete fails. */
+.upload-error {
   margin: 2px 0 0;
   color: #f2c14e;
   font-weight: 700;
   font-size: 0.62rem;
 }
 
-.custom-sound-error[hidden] {
+.upload-error[hidden] {
   display: none;
 }
 
@@ -934,51 +945,6 @@ h1 {
   height: 10px;
   background: var(--swatch);
   border-radius: 50%;
-}
-
-.icon-options {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.icon-option {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px;
-  background: transparent;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-}
-
-.icon-option:hover,
-.icon-option:focus-visible {
-  background: #303b47;
-}
-
-.icon-option.is-selected {
-  border-color: var(--accent);
-}
-
-.icon-option img {
-  display: block;
-  width: 32px;
-  height: 32px;
-  image-rendering: pixelated;
-}
-
-.icon-option-none {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 42px;
-  height: 42px;
-  color: var(--muted);
-  font-weight: 700;
-  font-size: 0.62rem;
-  line-height: 1;
-  white-space: nowrap;
 }
 
 button {
@@ -1223,7 +1189,8 @@ button:disabled {
 }
 
 .alarm-type-select,
-.progress-style-select {
+.progress-style-select,
+.timer-icon-select {
   width: 100%;
   box-sizing: border-box;
   padding: 6px 28px 6px 8px;
@@ -1344,6 +1311,19 @@ button:disabled {
   min-width: 0;
 }
 
+/* Image items (background images) show a thumbnail in the icon slot.
+   Pixel art (the bundled ones) stays crisp; uploads scale smoothly. */
+.icon-select-image {
+  display: block;
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+.icon-select-image.is-pixelated {
+  image-rendering: pixelated;
+}
+
 .icon-select-option-label {
   min-width: 0;
   overflow: hidden;
@@ -1397,7 +1377,8 @@ button:disabled {
 }
 
 .alarm-type-select:focus,
-.progress-style-select:focus {
+.progress-style-select:focus,
+.timer-icon-select:focus {
   outline: none;
   border-color: var(--accent);
 }

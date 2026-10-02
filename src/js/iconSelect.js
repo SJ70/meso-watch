@@ -3,8 +3,10 @@ import { createIconElement } from "../svg/icons.js";
 // A native <select> can't render icons in its option list, so this is a
 // button + listbox dropdown instead. items are { id, label, icon?, action?,
 // removable? }:
-// - icon: an svg name from src/svg/icons.js; items without one get an empty
-//   slot so labels still line up.
+// - icon: an svg name from src/svg/icons.js, or image: an image URL shown as
+//   a small thumbnail instead (pixelated: true to scale it nearest-neighbor,
+//   for pixel art); items with neither get an empty slot so labels still
+//   line up.
 // - action: not a value - clicking it calls onAction(id) instead of
 //   onSelect, and it's never shown as selected (e.g. "upload a sound").
 // - removable: gets an × button on the right that calls onRemove(id).
@@ -24,6 +26,7 @@ export function iconSelectMarkup({ triggerClass, ariaLabel }) {
 }
 
 function itemIcon(item) {
+  if (item.image) return [Object.assign(document.createElement("img"), { className: `icon-select-image${item.pixelated ? " is-pixelated" : ""}`, src: item.image, alt: "" })];
   return item.icon ? [createIconElement(item.icon, { width: 16, height: 16 })] : [];
 }
 

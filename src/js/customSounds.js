@@ -1,3 +1,5 @@
+import { withStore, createAssetId, assetLabelFromFile } from "./idbStore.js";
+
 // Alarm sounds the user registers from their own audio files, shared by all
 // timers. The files live in IndexedDB (audio is too big for localStorage);
 // each one is decoded once, up front, and the AudioBuffer kept in memory so
@@ -8,45 +10,14 @@ const STORE_NAME = "sounds";
 
 // Alarm type ids of registered sounds carry this prefix, so they can share
 // the per-timer alarm-type setting with the built-in ALARM_TYPES ids.
-export const CUSTOM_SOUND_PREFIX = "custom:";
+export const CUSTOM_SOUND_PREFIX = "custom-sound:";
 export const MAX_CUSTOM_SOUND_BYTES = 5 * 1024 * 1024;
-const MAX_LABEL_LENGTH = 30;
 
 const sounds = []; // { id, label }, in registration order
 const buffers = new Map(); // id -> AudioBuffer
 
 export function isCustomSoundId(id) {
   return typeof id === "string" && id.startsWith(CUSTOM_SOUND_PREFIX);
-}
-
-function requestResult(request) {
-  return new Promise((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-function openDatabase() {
-  const request = indexedDB.open(DB_NAME, 1);
-  request.onupgradeneeded = () => request.result.createObjectStore(STORE_NAME, { keyPath: "id" });
-  return requestResult(request);
-}
-
-async function withStore(mode, action) {
-  const db = await openDatabase();
-  try {
-    const transaction = db.transaction(STORE_NAME, mode);
-    const done = new Promise((resolve, reject) => {
-      transaction.oncomplete = resolve;
-      transaction.onerror = () => reject(transaction.error);
-      transaction.onabort = () => reject(transaction.error);
-    });
-    const result = await requestResult(action(transaction.objectStore(STORE_NAME)));
-    await done;
-    return result;
-  } finally {
-    db.close();
-  }
 }
 
 // An OfflineAudioContext decodes without needing a user gesture (a regular
@@ -62,7 +33,7 @@ function decodeAudio(arrayBuffer) {
 // no registered sounds.
 export async function loadCustomSounds() {
   try {
-    const records = await withStore("readonly", (store) => store.getAll());
+    const records = await withStore(DB_NAME, STORE_NAME, "readonly", (store) => store.getAll());
     records.sort((a, b) => a.createdAt - b.createdAt);
     for (const record of records) {
       try {
@@ -96,10 +67,10 @@ export async function addCustomSound(file) {
   } catch {
     throw new Error("decode-failed");
   }
-  const id = `${CUSTOM_SOUND_PREFIX}${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
-  const label = file.name.replace(/\.[^.]+$/, "").trim().slice(0, MAX_LABEL_LENGTH) || "내 알람음";
+  const id = createAssetId(CUSTOM_SOUND_PREFIX);
+  const label = assetLabelFromFile(file, "내 알람음");
   try {
-    await withStore("readwrite", (store) => store.put({ id, label, data, createdAt: Date.now() }));
+    await withStore(DB_NAME, STORE_NAME, "readwrite", (store) => store.put({ id, label, data, createdAt: Date.now() }));
   } catch {
     throw new Error("save-failed");
   }
@@ -109,7 +80,7 @@ export async function addCustomSound(file) {
 }
 
 export async function deleteCustomSound(id) {
-  await withStore("readwrite", (store) => store.delete(id));
+  await withStore(DB_NAME, STORE_NAME, "readwrite", (store) => store.delete(id));
   buffers.delete(id);
   const index = sounds.findIndex((sound) => sound.id === id);
   if (index >= 0) sounds.splice(index, 1);

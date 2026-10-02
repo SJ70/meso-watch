@@ -2,7 +2,7 @@ import { createIconElement } from "../svg/icons.js";
 import {
   NO_ICON,
   PROGRESS_STYLES,
-  TIMER_ICON_NAMES,
+  TIMER_ICONS,
   DEFAULT_MASTER_VOLUME,
   DEFAULT_TIMER_VOLUME,
   DEFAULT_TIMER_MINUTES,
@@ -28,6 +28,7 @@ import { iconSelectMarkup, setupIconSelect, updateIconSelect } from "./iconSelec
 import { loadTimerProgressStyle, saveTimerProgressStyle, removeTimerProgressStyle, progressStyleSettingMarkup, setupProgressStyleSelect, updateProgressStyleSelect } from "./timerProgress.js";
 import { loadTimerColor, saveTimerColor, removeTimerColor, applyTimerColor, timerColorSettingMarkup, setupTimerColorSetting, updateTimerColorSetting } from "./timerColor.js";
 import { loadCustomSounds, getCustomSounds, addCustomSound, deleteCustomSound, MAX_CUSTOM_SOUND_BYTES } from "./customSounds.js";
+import { loadCustomImages, getCustomImages, getCustomImageUrl, addCustomImage, deleteCustomImage, isCustomImageId, MAX_CUSTOM_IMAGE_BYTES } from "./customImages.js";
 import { openDialog, registerDialogShrinkOnClose } from "./dialog-utils.js";
 import { previewAlarmSound, stopAlarmPreview, effectiveVolume, notifyDone, stopAlarm } from "./sound.js";
 import { formatShortcut, NORMALIZE_MODIFIER_CODE } from "./shortcuts.js";
@@ -237,28 +238,30 @@ confirmDialog.addEventListener("cancel", () => {
   pendingDeleteTimer = null;
 });
 
-// Confirms deleting a registered alarm sound. Resolves true on 삭제, false
-// on 취소/Escape. It's only ever opened from a timer's settings dialog, so it
-// stacks on top of that one without resizing the window (unlike openDialog /
-// registerDialogShrinkOnClose) - the window already fits the taller settings
-// dialog, and shrinking on close would cut that one off.
-const soundDeleteDialog = document.getElementById("soundDeleteDialog");
-const soundDeleteMessage = document.getElementById("soundDeleteMessage");
-let resolveSoundDelete = null;
-function settleSoundDelete(confirmed) {
-  resolveSoundDelete?.(confirmed);
-  resolveSoundDelete = null;
-  if (soundDeleteDialog.open) soundDeleteDialog.close();
+// Confirms deleting an uploaded file (alarm sound / background image).
+// Resolves true on 삭제, false on 취소/Escape. It's only ever opened from a
+// timer's settings dialog, so it stacks on top of that one without resizing
+// the window (unlike openDialog / registerDialogShrinkOnClose) - the window
+// already fits the taller settings dialog, and shrinking on close would cut
+// that one off.
+const assetDeleteDialog = document.getElementById("assetDeleteDialog");
+let resolveAssetDelete = null;
+function settleAssetDelete(confirmed) {
+  resolveAssetDelete?.(confirmed);
+  resolveAssetDelete = null;
+  if (assetDeleteDialog.open) assetDeleteDialog.close();
 }
-document.getElementById("soundDeleteCancelButton").addEventListener("click", () => settleSoundDelete(false));
-document.getElementById("soundDeleteConfirmButton").addEventListener("click", () => settleSoundDelete(true));
-soundDeleteDialog.addEventListener("close", () => settleSoundDelete(false));
-function confirmSoundDelete(label) {
-  settleSoundDelete(false);
-  soundDeleteMessage.textContent = `"${label}" 알람음을 삭제할까요?`;
-  soundDeleteDialog.showModal();
+document.getElementById("assetDeleteCancelButton").addEventListener("click", () => settleAssetDelete(false));
+document.getElementById("assetDeleteConfirmButton").addEventListener("click", () => settleAssetDelete(true));
+assetDeleteDialog.addEventListener("close", () => settleAssetDelete(false));
+function confirmAssetDelete({ title, message, note }) {
+  settleAssetDelete(false);
+  document.getElementById("assetDeleteTitle").textContent = title;
+  document.getElementById("assetDeleteMessage").textContent = message;
+  document.getElementById("assetDeleteNote").textContent = note;
+  assetDeleteDialog.showModal();
   return new Promise((resolve) => {
-    resolveSoundDelete = resolve;
+    resolveAssetDelete = resolve;
   });
 }
 
@@ -430,13 +433,23 @@ function defaultTimerName(timer) {
   return `타이머 ${index >= 0 ? index + 1 : timers.length + 1}`;
 }
 
-function timerIconUrl(timer) {
-  if (timer.icon === NO_ICON) return "none";
+// URL of a timer's background image - a bundled file name or an uploaded
+// image id (see customImages.js) - or null for none / a deleted upload.
+function timerIconHref(icon) {
+  if (icon === NO_ICON) return null;
+  if (isCustomImageId(icon)) return getCustomImageUrl(icon);
   // Absolute, not relative: a url() inside a custom property resolves against
   // the stylesheet that consumes it via var() (src/css/index.css), not the
   // document, so a relative path here breaks if that file ever moves again.
-  const href = new URL(`../public/icons/${timer.icon}`, document.baseURI).href;
-  return `url("${href}")`;
+  return new URL(`../public/icons/${icon}`, document.baseURI).href;
+}
+
+function applyTimerIcon(element, icon) {
+  const href = timerIconHref(icon);
+  element.style.setProperty("--timer-icon", href ? `url("${href}")` : "none");
+  // Uploaded images can be any size/shape and aren't pixel art - see
+  // .timer-card.has-custom-icon::before.
+  element.classList.toggle("has-custom-icon", isCustomImageId(icon));
 }
 
 function loadDuration(timerId) {
@@ -463,8 +476,30 @@ function saveTimerIds() {
 
 function loadTimerIcon(id) {
   const stored = localStorage.getItem(`meso-watch-timer-${id}-icon`);
-  return TIMER_ICON_NAMES.includes(stored) ? stored : NO_ICON;
+  return getTimerIconItems().some((item) => item.id === stored) ? stored : NO_ICON;
 }
+
+// Background image choices: 없음, the bundled images, then the user's
+// uploaded ones (see customImages.js) with an × to delete them - all shown
+// as thumbnails (the bundled ones are pixel art, so kept crisp).
+function getTimerIconItems() {
+  return [
+    { id: NO_ICON, label: "없음" },
+    ...TIMER_ICONS.map(({ file, label }) => ({ id: file, label, image: timerIconHref(file), pixelated: true })),
+    ...getCustomImages().map((image) => ({ id: image.id, label: image.label, image: image.url, removable: true })),
+  ];
+}
+
+// The background image dropdown's last row: not an image, but uploads one.
+// The card shows it in a square box, so other shapes get letterboxed.
+const UPLOAD_IMAGE_ITEM = { id: "upload-image", label: "이미지 파일 업로드", icon: "file-up", action: true, hint: "1×1 비율 권장" };
+const timerIconSelectItems = () => [...getTimerIconItems(), UPLOAD_IMAGE_ITEM];
+
+const CUSTOM_IMAGE_ERRORS = {
+  "too-large": `${MAX_CUSTOM_IMAGE_BYTES / 1024 / 1024}MB 이하의 파일만 등록할 수 있습니다.`,
+  "decode-failed": "열 수 없는 이미지 파일입니다.",
+  "save-failed": "이미지를 저장하지 못했습니다.",
+};
 
 function loadTimerVolume(id) {
   const raw = localStorage.getItem(`meso-watch-timer-${id}-volume`);
@@ -485,11 +520,12 @@ function getAlarmTypes() {
 const UPLOAD_SOUND_ITEM = { id: "upload-sound", label: "소리 파일 업로드", icon: "file-up", action: true, hint: "1초 이내 권장" };
 const alarmTypeSelectItems = () => [...getAlarmTypes(), UPLOAD_SOUND_ITEM];
 
-// Every rendered timer's alarm sound dropdown registers a refresher here, so
-// registering or deleting a sound (shared by all timers) updates them all.
-const alarmTypeSelectRefreshers = new Set();
-function refreshAlarmTypeSelects() {
-  alarmTypeSelectRefreshers.forEach((refresh) => refresh());
+// Every rendered timer registers a refresher here that rebuilds its alarm
+// sound and background image dropdowns, so uploading or deleting a file
+// (shared by all timers) updates them all.
+const assetSelectRefreshers = new Set();
+function refreshAssetSelects() {
+  assetSelectRefreshers.forEach((refresh) => refresh());
 }
 
 // Timers set to a sound that was just deleted fall back to the default.
@@ -499,7 +535,18 @@ function handleCustomSoundDeleted(soundId) {
     timer.alarmType = DEFAULT_ALARM_TYPE;
     localStorage.setItem(`meso-watch-timer-${timer.id}-alarm-type`, timer.alarmType);
   });
-  refreshAlarmTypeSelects();
+  refreshAssetSelects();
+}
+
+// Timers using an image that was just deleted fall back to no image.
+function handleCustomImageDeleted(imageId) {
+  timers.forEach((timer) => {
+    if (timer.icon !== imageId) return;
+    timer.icon = NO_ICON;
+    localStorage.setItem(`meso-watch-timer-${timer.id}-icon`, timer.icon);
+    if (timer.element) applyTimerIcon(timer.element, timer.icon);
+  });
+  refreshAssetSelects();
 }
 
 const CUSTOM_SOUND_ERRORS = {
@@ -655,7 +702,7 @@ function renderTimer(timer, target = timerList) {
   element.draggable = true;
   element.dataset.timerId = timer.id;
   element.dataset.progressStyle = timer.progressStyle;
-  element.style.setProperty("--timer-icon", timerIconUrl(timer));
+  applyTimerIcon(element, timer.icon);
   applyTimerColor(element, timer.color);
   timer.element = element;
   element.innerHTML = `
@@ -762,7 +809,7 @@ function renderTimer(timer, target = timerList) {
           <span class="control-label">알람음</span>
           ${iconSelectMarkup({ triggerClass: "alarm-type-select", ariaLabel: `타이머 ${timer.id} 알람음` })}
           <input class="custom-sound-file" type="file" accept="audio/*" hidden />
-          <p class="custom-sound-error" role="alert" hidden></p>
+          <p class="upload-error custom-sound-error" role="alert" hidden></p>
         </div>
         <div class="opacity-setting volume-setting">
           <div class="opacity-setting-header">
@@ -794,16 +841,10 @@ function renderTimer(timer, target = timerList) {
         ${progressStyleSettingMarkup(timer)}
         ${timerColorSettingMarkup(timer)}
         <div class="icon-setting">
-          <span class="control-label">아이콘</span>
-          <div class="icon-options" role="group" aria-label="타이머 ${timer.id} 아이콘 선택">
-            ${TIMER_ICON_NAMES.map((name) => name === NO_ICON ? `
-              <button class="icon-option icon-option-none${name === timer.icon ? " is-selected" : ""}" type="button" data-icon="${name}" aria-label="아이콘 없음">없음</button>
-            ` : `
-              <button class="icon-option${name === timer.icon ? " is-selected" : ""}" type="button" data-icon="${name}" aria-label="${name.replace(/\.(png|webp)$/, "")} 아이콘">
-                <img src="../public/icons/${name}" alt="" />
-              </button>
-            `).join("")}
-          </div>
+          <span class="control-label">배경 이미지</span>
+          ${iconSelectMarkup({ triggerClass: "timer-icon-select", ariaLabel: `타이머 ${timer.id} 배경 이미지` })}
+          <input class="custom-image-file" type="file" accept="image/*" hidden />
+          <p class="upload-error custom-image-error" role="alert" hidden></p>
         </div>
         ${settingsSubpageFooterMarkup()}
       </div>
@@ -825,10 +866,8 @@ function renderTimer(timer, target = timerList) {
     pauseButtonEl: element.querySelector(".pause-button"),
   };
   let draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon, volume: timer.volume, alarmType: timer.alarmType, alarmRepeatCount: timer.alarmRepeatCount, alarmRepeatUnlimited: timer.alarmRepeatUnlimited, autoRestart: timer.autoRestart, restartDelay: timer.restartDelay, progressStyle: timer.progressStyle, color: timer.color };
-  function updateIconOptionsUi() {
-    element.querySelectorAll(".icon-option").forEach((button) => {
-      button.classList.toggle("is-selected", button.dataset.icon === draft.icon);
-    });
+  function updateTimerIconSettingUi() {
+    updateIconSelect(element.querySelector(".icon-setting .icon-select"), getTimerIconItems(), draft.icon);
   }
   function updateVolumeSettingUi() {
     const slider = element.querySelector(".volume-slider-input");
@@ -839,8 +878,10 @@ function renderTimer(timer, target = timerList) {
   function updateAlarmTypeSettingUi() {
     updateIconSelect(element.querySelector(".alarm-type-setting .icon-select"), getAlarmTypes(), draft.alarmType);
   }
-  function showCustomSoundError(message) {
-    const errorElement = element.querySelector(".custom-sound-error");
+  // Shows/clears an upload/delete failure under a dropdown (errorSelector:
+  // .custom-sound-error or .custom-image-error).
+  function showUploadError(errorSelector, message) {
+    const errorElement = element.querySelector(errorSelector);
     if (errorElement.textContent === message && errorElement.hidden === !message) return;
     errorElement.textContent = message;
     errorElement.hidden = !message;
@@ -874,20 +915,17 @@ function renderTimer(timer, target = timerList) {
     element.querySelector(".name-input").value = timer.name;
     setDurationWheels(timer.totalMs);
     element.querySelector(".shortcut-button").value = formatShortcut(timer.shortcut);
-    updateIconOptionsUi();
+    updateTimerIconSettingUi();
     updateVolumeSettingUi();
     updateAlarmTypeSettingUi();
-    showCustomSoundError("");
+    showUploadError(".custom-sound-error", "");
+    showUploadError(".custom-image-error", "");
     updateAlarmRepeatSettingUi();
     updateAutoRestartSettingUi();
     updateProgressStyleSettingUi();
     updateTimerColorSettingUi();
     showSettingsPage("main");
   }
-  element.querySelectorAll(".icon-option").forEach((button) => button.addEventListener("click", () => {
-    draft.icon = button.dataset.icon;
-    updateIconOptionsUi();
-  }));
   element.querySelector(".volume-slider-input").addEventListener("input", (event) => {
     draft.volume = Number(event.target.value);
     updateVolumeSettingUi();
@@ -903,49 +941,99 @@ function renderTimer(timer, target = timerList) {
     onAction: () => customSoundFileInput.click(),
     onRemove: (soundId) => removeCustomSound(soundId),
   });
-  // Rebuilds this dropdown after the registered sounds change; a draft set to
-  // a sound that's gone falls back to the default. Drops itself once this
-  // card has been removed/re-rendered.
-  const refreshAlarmTypeSelect = () => {
+  const timerIconSelect = setupIconSelect(element.querySelector(".icon-setting .icon-select"), element, timerIconSelectItems(), (icon) => {
+    draft.icon = icon;
+    updateTimerIconSettingUi();
+  }, {
+    onAction: () => customImageFileInput.click(),
+    onRemove: (imageId) => removeCustomImage(imageId),
+  });
+  // Rebuilds both upload-backed dropdowns after the uploaded files change; a
+  // draft set to one that's gone falls back to the default. Drops itself
+  // once this card has been removed/re-rendered.
+  const refreshAssetSelect = () => {
     if (!element.isConnected) {
-      alarmTypeSelectRefreshers.delete(refreshAlarmTypeSelect);
+      assetSelectRefreshers.delete(refreshAssetSelect);
       return;
     }
     if (!getAlarmTypes().some((alarmType) => alarmType.id === draft.alarmType)) draft.alarmType = DEFAULT_ALARM_TYPE;
+    if (!getTimerIconItems().some((item) => item.id === draft.icon)) draft.icon = NO_ICON;
     alarmTypeSelect.setItems(alarmTypeSelectItems());
+    timerIconSelect.setItems(timerIconSelectItems());
     updateAlarmTypeSettingUi();
+    updateTimerIconSettingUi();
     updateSettingsPreviews();
   };
-  alarmTypeSelectRefreshers.add(refreshAlarmTypeSelect);
+  assetSelectRefreshers.add(refreshAssetSelect);
   // Upload picked from the dropdown's last row; the new sound gets selected.
   const customSoundFileInput = element.querySelector(".custom-sound-file");
   customSoundFileInput.addEventListener("change", async () => {
     const file = customSoundFileInput.files[0];
     customSoundFileInput.value = "";
     if (!file) return;
-    showCustomSoundError("");
+    showUploadError(".custom-sound-error", "");
     try {
       const sound = await addCustomSound(file);
       draft.alarmType = sound.id;
-      refreshAlarmTypeSelects();
+      refreshAssetSelects();
       previewAlarmSound(effectiveVolume(volume, draft.volume), draft.alarmType);
     } catch (error) {
-      showCustomSoundError(CUSTOM_SOUND_ERRORS[error.message] ?? CUSTOM_SOUND_ERRORS["save-failed"]);
+      showUploadError(".custom-sound-error", CUSTOM_SOUND_ERRORS[error.message] ?? CUSTOM_SOUND_ERRORS["save-failed"]);
     }
   });
   // The × on a registered sound's row.
   async function removeCustomSound(soundId) {
     const sound = getCustomSounds().find((item) => item.id === soundId);
     if (!sound) return;
-    if (!(await confirmSoundDelete(sound.label))) return;
-    showCustomSoundError("");
+    const confirmed = await confirmAssetDelete({
+      title: "알람음 삭제",
+      message: `"${sound.label}" 알람음을 삭제할까요?`,
+      note: "이 알람음을 쓰는 모든 타이머는 기본음으로 바뀝니다.",
+    });
+    if (!confirmed) return;
+    showUploadError(".custom-sound-error", "");
     try {
       await deleteCustomSound(sound.id);
     } catch {
-      showCustomSoundError("알람음을 삭제하지 못했습니다.");
+      showUploadError(".custom-sound-error", "알람음을 삭제하지 못했습니다.");
       return;
     }
     handleCustomSoundDeleted(sound.id);
+  }
+  // Background image upload, picked from its dropdown's last row; the new
+  // image gets selected.
+  const customImageFileInput = element.querySelector(".custom-image-file");
+  customImageFileInput.addEventListener("change", async () => {
+    const file = customImageFileInput.files[0];
+    customImageFileInput.value = "";
+    if (!file) return;
+    showUploadError(".custom-image-error", "");
+    try {
+      const image = await addCustomImage(file);
+      draft.icon = image.id;
+      refreshAssetSelects();
+    } catch (error) {
+      showUploadError(".custom-image-error", CUSTOM_IMAGE_ERRORS[error.message] ?? CUSTOM_IMAGE_ERRORS["save-failed"]);
+    }
+  });
+  // The × on an uploaded image's row.
+  async function removeCustomImage(imageId) {
+    const image = getCustomImages().find((item) => item.id === imageId);
+    if (!image) return;
+    const confirmed = await confirmAssetDelete({
+      title: "이미지 삭제",
+      message: `"${image.label}" 이미지를 삭제할까요?`,
+      note: "이 이미지를 쓰는 모든 타이머는 배경 이미지 없음으로 바뀝니다.",
+    });
+    if (!confirmed) return;
+    showUploadError(".custom-image-error", "");
+    try {
+      await deleteCustomImage(image.id);
+    } catch {
+      showUploadError(".custom-image-error", "이미지를 삭제하지 못했습니다.");
+      return;
+    }
+    handleCustomImageDeleted(image.id);
   }
   element.querySelector(".alarm-repeat-count-slider").addEventListener("input", (event) => {
     draft.alarmRepeatCount = Number(event.target.value);
@@ -1082,7 +1170,7 @@ function renderTimer(timer, target = timerList) {
     saveTimerProgressStyle(timer);
     saveTimerColor(timer);
     element.querySelector(".timer-label").textContent = timer.name;
-    element.style.setProperty("--timer-icon", timerIconUrl(timer));
+    applyTimerIcon(element, timer.icon);
     applyTimerColor(element, timer.color);
     if (durationChanged) adjustTimerDuration(timer, previousTotalMs);
     if (timer.isDraft) {
@@ -1150,6 +1238,7 @@ function renderTimer(timer, target = timerList) {
     if (page !== "alarm") stopAlarmPreview();
     currentSettingsPage = page;
     alarmTypeSelect.close();
+    timerIconSelect.close();
     progressStyleSelect.close();
     timerColorSetting.close();
     element.querySelectorAll(".settings-page").forEach((settingsPage) => {
@@ -1185,15 +1274,16 @@ function renderTimer(timer, target = timerList) {
       previewText(`${alarmType.label} · ${draft.volume}% · ${repeatText}`),
     );
     const progressStyle = PROGRESS_STYLES.find((item) => item.id === draft.progressStyle) ?? PROGRESS_STYLES[0];
-    const timerIcon = draft.icon === NO_ICON ? null : Object.assign(document.createElement("img"), { src: `../public/icons/${draft.icon}`, alt: "" });
+    const timerIconSrc = timerIconHref(draft.icon);
+    const timerIcon = timerIconSrc ? Object.assign(document.createElement("img"), { src: timerIconSrc, alt: "" }) : null;
     const colorDot = Object.assign(document.createElement("span"), { className: "settings-nav-color" });
     colorDot.style.setProperty("--swatch", draft.color);
     preview("appearance").replaceChildren(
       previewIcon(progressStyle.icon),
       previewText(`${progressStyle.label} · `),
       colorDot,
-      previewText(" · "),
-      timerIcon ?? previewText("아이콘 없음"),
+      // No background image: the preview just ends at the color.
+      ...(timerIcon ? [previewText(" · "), timerIcon] : []),
     );
   }
   element.querySelectorAll(".settings-nav-row").forEach((row) => {
@@ -1606,9 +1696,9 @@ addTimerButton.addEventListener("click", () => {
   openDialog(draftHost.querySelector(".settings-modal"));
 });
 
-// Registered alarm sounds must be loaded before timers read their saved
-// alarm type, or a timer set to one would fall back to the default.
-await loadCustomSounds();
+// Uploaded alarm sounds / images must be loaded before timers read their
+// saved alarm type / icon, or a timer set to one would fall back to the default.
+await Promise.all([loadCustomSounds(), loadCustomImages()]);
 const initialTimerIds = loadTimerIds();
 if (initialTimerIds.length > 0) {
   timers = initialTimerIds.map((id, index) => buildTimer(id, loadDuration(id) ?? 60000, index));
