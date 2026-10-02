@@ -18,6 +18,8 @@ export const MIN_UI_ZOOM = 50;
 export const MAX_UI_ZOOM = 150;
 
 export const DEFAULT_TIMER_MINUTES = 1;
+// Upper bound of the hours column in the duration picker.
+export const MAX_DURATION_HOURS = 23;
 
 // ids must match the keys of ALARM_PATTERNS in sound.js
 // icon (optional) is an svg name from src/svg/icons.js, shown left of the label.

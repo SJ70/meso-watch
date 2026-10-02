@@ -5,6 +5,7 @@ import {
   DEFAULT_MASTER_VOLUME,
   DEFAULT_TIMER_VOLUME,
   DEFAULT_TIMER_MINUTES,
+  MAX_DURATION_HOURS,
   DEFAULT_TIMERS_PER_ROW,
   DEFAULT_UI_ZOOM,
   MIN_UI_ZOOM,
@@ -337,11 +338,20 @@ function saveShortcuts() {
   window.electronAPI?.setGlobalShortcuts(timers.filter((timer) => timer.shortcut).map((timer) => ({ id: timer.id, shortcut: timer.shortcut })));
 }
 
+// mm:ss, growing to h:mm:ss only once a timer is an hour or longer.
 function formatTime(seconds) {
-  const minutes = Math.floor(seconds / 60).toString().padStart(2, "0");
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60).toString().padStart(2, "0");
   const remainingSeconds = (seconds % 60).toString().padStart(2, "0");
-  return `${minutes}:${remainingSeconds}`;
+  return hours > 0 ? `${hours}:${minutes}:${remainingSeconds}` : `${minutes}:${remainingSeconds}`;
 }
+
+// Hours/minutes/seconds columns of the duration picker in the settings modal.
+const DURATION_UNITS = [
+  { unit: "hours", label: "시간", max: MAX_DURATION_HOURS, fromMs: (ms) => Math.floor(ms / 3600000) },
+  { unit: "minutes", label: "분", max: 59, fromMs: (ms) => Math.floor(ms / 60000) % 60 },
+  { unit: "seconds", label: "초", max: 59, fromMs: (ms) => Math.floor(ms / 1000) % 60 },
+];
 
 function formatMs(ms) {
   return Math.floor((((ms % 1000) + 1000) % 1000) / 10).toString().padStart(2, "0");
@@ -587,14 +597,21 @@ function renderTimer(timer, target = timerList) {
         <input class="name-input" type="text" maxlength="30" value="${escapeHtml(timer.name)}" aria-label="타이머 이름" />
       </label>
       <div class="duration-setting">
-        <div class="duration-setting-header">
-          <span class="control-label">시간</span>
-          <span class="duration-hint">마우스 휠로 조절 가능</span>
-        </div>
+        <span class="control-label">시간</span>
         <div class="duration-fields" aria-label="타이머 ${timer.id} 시간 입력">
-          <input class="duration-input minutes-input" type="text" inputmode="numeric" pattern="[0-9]*" value="${Math.floor(timer.totalMs / 60000)}" aria-label="타이머 ${timer.id} 분" />
-          <span class="duration-separator" aria-hidden="true">:</span>
-          <input class="duration-input seconds-input" type="text" inputmode="numeric" pattern="[0-9]*" value="${Math.floor(timer.totalMs / 1000) % 60}" aria-label="타이머 ${timer.id} 초" />
+          ${DURATION_UNITS.map(({ unit, label }, index) => `${index > 0 ? '<span class="duration-separator" aria-hidden="true">:</span>' : ""}
+          <div class="duration-column">
+            <span class="duration-wheel-label" aria-hidden="true">${label}</span>
+            <div class="duration-wheel" data-unit="${unit}">
+              <div class="duration-wheel-track">
+                <span class="duration-wheel-value" data-offset="-2" aria-hidden="true"></span>
+                <button class="duration-wheel-value duration-wheel-step" data-offset="-1" type="button" tabindex="-1" aria-hidden="true"></button>
+                <input class="duration-input" type="text" inputmode="numeric" pattern="[0-9]*" aria-label="타이머 ${timer.id} ${label}" />
+                <button class="duration-wheel-value duration-wheel-step" data-offset="1" type="button" tabindex="-1" aria-hidden="true"></button>
+                <span class="duration-wheel-value" data-offset="2" aria-hidden="true"></span>
+              </div>
+            </div>
+          </div>`).join("")}
         </div>
         <div class="duration-presets" role="group" aria-label="타이머 ${timer.id} 시간 프리셋">
           <button class="duration-preset" type="button" data-ms="7500">7.5초</button>
@@ -718,8 +735,7 @@ function renderTimer(timer, target = timerList) {
   function resetDraftFromTimer() {
     draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon, volume: timer.volume, alarmType: timer.alarmType, alarmRepeatCount: timer.alarmRepeatCount, alarmRepeatUnlimited: timer.alarmRepeatUnlimited, autoRestart: timer.autoRestart, restartDelay: timer.restartDelay, progressStyle: timer.progressStyle };
     element.querySelector(".name-input").value = timer.name;
-    element.querySelector(".minutes-input").value = Math.floor(timer.totalMs / 60000);
-    element.querySelector(".seconds-input").value = Math.floor(timer.totalMs / 1000) % 60;
+    setDurationWheels(timer.totalMs);
     element.querySelector(".shortcut-button").value = formatShortcut(timer.shortcut);
     updateIconOptionsUi();
     updateVolumeSettingUi();
@@ -920,38 +936,119 @@ function renderTimer(timer, target = timerList) {
     draft.name = event.target.value.trim() || defaultTimerName(timer);
     event.target.value = draft.name;
   });
-  const durationInputMax = (input) => (input.classList.contains("seconds-input") ? 59 : 60);
-  element.querySelectorAll(".duration-input").forEach((input) => input.addEventListener("input", (event) => {
-    event.target.value = event.target.value.replace(/\D/g, "");
-    if (Number(event.target.value) > durationInputMax(event.target)) event.target.value = "0";
-  }));
-  element.querySelectorAll(".duration-input").forEach((input) => input.addEventListener("wheel", (event) => {
-    event.preventDefault();
-    const delta = event.deltaY < 0 ? 1 : -1;
-    input.value = Math.min(durationInputMax(input), Math.max(0, (Number(input.value) || 0) + delta));
-    input.dispatchEvent(new Event("change"));
-  }, { passive: false }));
-  element.querySelectorAll(".duration-input").forEach((input) => input.addEventListener("change", () => {
-    const minutesInput = element.querySelector(".minutes-input");
-    const secondsInput = element.querySelector(".seconds-input");
-    const minutes = Math.min(60, Math.max(0, Number(minutesInput.value) || 0));
-    const seconds = Math.min(59, Math.max(0, Number(secondsInput.value) || 0));
-    const totalSeconds = minutes * 60 + seconds;
-    if (totalSeconds === 0) {
-      minutesInput.value = 0;
-      secondsInput.value = 1;
-      draft.totalMs = 1000;
-    } else {
-      minutesInput.value = minutes;
-      secondsInput.value = seconds;
-      draft.totalMs = totalSeconds * 1000;
-    }
-  }));
+  // Each picker column is a drum: the current value in an input (click to
+  // type) with faded neighbours above/below. Wheel or clicking a neighbour
+  // steps it with a short slide; dragging moves the track with the pointer
+  // and snaps to the nearest row on release. Values wrap (59 -> 00).
+  const durationWheels = DURATION_UNITS.map((unitInfo) => {
+    const wheel = element.querySelector(`.duration-wheel[data-unit="${unitInfo.unit}"]`);
+    return { ...unitInfo, wheel, track: wheel.querySelector(".duration-wheel-track"), input: wheel.querySelector(".duration-input") };
+  });
+  const wrapDurationValue = (value, max) => ((value % (max + 1)) + max + 1) % (max + 1);
+  const padDurationValue = (value) => String(value).padStart(2, "0");
+  function setDurationWheel({ wheel, input, max }, value) {
+    input.value = padDurationValue(value);
+    wheel.querySelectorAll("[data-offset]").forEach((row) => {
+      row.textContent = padDurationValue(wrapDurationValue(value + Number(row.dataset.offset), max));
+    });
+  }
+  function setDurationWheels(ms) {
+    durationWheels.forEach((unitInfo) => setDurationWheel(unitInfo, unitInfo.fromMs(ms)));
+  }
+  // Rebuilds draft.totalMs from the columns. A 0:00:00 total isn't a usable
+  // timer, so it's bumped to 1 second.
+  function commitDurationWheels() {
+    const [hours, minutes, seconds] = durationWheels.map(({ input, max }) => Math.min(max, Math.max(0, Number(input.value) || 0)));
+    draft.totalMs = Math.max(1, hours * 3600 + minutes * 60 + seconds) * 1000;
+    setDurationWheels(draft.totalMs);
+  }
+  function stepDurationWheel(unitInfo, delta) {
+    setDurationWheel(unitInfo, wrapDurationValue((Number(unitInfo.input.value) || 0) + delta, unitInfo.max));
+    commitDurationWheels();
+  }
+  // Positive offset shifts the track down (shows smaller values). settle
+  // animates from the current offset back to rest instead of jumping.
+  function setTrackOffset(track, offsetPx, { settle = false } = {}) {
+    track.classList.toggle("is-settling", settle);
+    track.style.transform = offsetPx ? `translateY(${offsetPx}px)` : "";
+  }
+  // Steps by delta, then slides the new rows in from where the old ones
+  // were, so the jump reads as the drum rolling.
+  function rollDurationWheel(unitInfo, delta) {
+    const rowHeight = unitInfo.input.offsetHeight;
+    stepDurationWheel(unitInfo, delta);
+    setTrackOffset(unitInfo.track, Math.sign(delta) * rowHeight);
+    void unitInfo.track.offsetHeight; // commit the offset before animating it away
+    setTrackOffset(unitInfo.track, 0, { settle: true });
+  }
+  // How far (px) the pointer must move before a press counts as a drag
+  // rather than a click on the input / a neighbour.
+  const DURATION_DRAG_THRESHOLD_PX = 3;
+  durationWheels.forEach((unitInfo) => {
+    const { wheel, track, input, max } = unitInfo;
+    input.addEventListener("input", () => {
+      input.value = input.value.replace(/\D/g, "").slice(-2);
+      if (Number(input.value) > max) input.value = String(max);
+    });
+    input.addEventListener("change", commitDurationWheels);
+    input.addEventListener("focus", () => input.select());
+    // Scrolling down rolls the drum toward larger numbers, the way the next
+    // (larger) row sits below the current one.
+    wheel.addEventListener("wheel", (event) => {
+      event.preventDefault();
+      rollDurationWheel(unitInfo, event.deltaY > 0 ? 1 : -1);
+    }, { passive: false });
+    wheel.querySelectorAll(".duration-wheel-step").forEach((step) => step.addEventListener("click", () => {
+      rollDurationWheel(unitInfo, Number(step.dataset.offset));
+    }));
+    // The track follows the pointer; each time it passes half a row the
+    // value steps and the offset is re-based, so the rows appear to scroll
+    // continuously. Dragging up brings the larger (lower) rows into place.
+    let drag = null;
+    let suppressClick = false;
+    wheel.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      drag = { startY: event.clientY, steps: 0, moved: false, rowHeight: input.offsetHeight };
+      suppressClick = false;
+    });
+    wheel.addEventListener("pointermove", (event) => {
+      if (!drag) return;
+      const distance = drag.startY - event.clientY;
+      if (!drag.moved) {
+        if (Math.abs(distance) < DURATION_DRAG_THRESHOLD_PX) return;
+        drag.moved = true;
+        wheel.setPointerCapture(event.pointerId);
+        input.blur();
+      }
+      const steps = Math.round(distance / drag.rowHeight);
+      if (steps !== drag.steps) {
+        stepDurationWheel(unitInfo, steps - drag.steps);
+        drag.steps = steps;
+      }
+      setTrackOffset(track, -(distance - steps * drag.rowHeight));
+    });
+    const endDrag = () => {
+      if (!drag) return;
+      if (drag.moved) {
+        suppressClick = true;
+        setTrackOffset(track, 0, { settle: true });
+      }
+      drag = null;
+    };
+    wheel.addEventListener("pointerup", endDrag);
+    wheel.addEventListener("pointercancel", endDrag);
+    // A real drag shouldn't also count as a click on whatever it ended over.
+    wheel.addEventListener("click", (event) => {
+      if (!suppressClick) return;
+      event.stopPropagation();
+      event.preventDefault();
+      suppressClick = false;
+    }, true);
+  });
   element.querySelectorAll(".duration-preset").forEach((button) => button.addEventListener("click", () => {
     const ms = Number(button.dataset.ms);
     draft.totalMs = ms;
-    element.querySelector(".minutes-input").value = Math.floor(ms / 60000);
-    element.querySelector(".seconds-input").value = Math.floor(ms / 1000) % 60;
+    setDurationWheels(ms);
   }));
   element.querySelector(".shortcut-button").addEventListener("click", () => {
     recordingDraft = draft;
