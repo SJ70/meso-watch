@@ -1134,6 +1134,25 @@ button:disabled {
   border-color: var(--accent);
 }
 
+/* Settings fields (text inputs, the shortcut field, dropdowns, the duration
+   picker, on/off toggles) light their border up on hover, same as the
+   main page's 시간/알람/외형 rows. */
+.name-input,
+.shortcut-input,
+.icon-select-trigger,
+.duration-fields,
+.settings-nav-row {
+  transition: border-color 160ms ease;
+}
+
+.name-input:hover,
+.shortcut-input:hover,
+.icon-select-trigger:hover,
+.duration-fields:hover,
+.toggle-switch:hover .toggle-track {
+  border-color: var(--accent);
+}
+
 .opacity-setting-header {
   display: flex;
   align-items: baseline;
