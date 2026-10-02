@@ -26,7 +26,7 @@ export const MAX_DURATION_MINUTES = 60;
 // ids must match the keys of ALARM_PATTERNS in sound.js
 // icon (optional) is an svg name from src/svg/icons.js, shown left of the label.
 export const ALARM_TYPES = [
-  { id: "beep", label: "기본음", icon: "volume-1" },
+  { id: "beep", label: "기본음", icon: "alarm-clock" },
   { id: "chime", label: "차임벨", icon: "bell-check" },
   { id: "alert", label: "경고음", icon: "triangle-alert" },
   { id: "bell", label: "종소리", icon: "bell" },

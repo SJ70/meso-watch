@@ -1,4 +1,5 @@
 const ICON_NAMES = [
+  "alarm-clock",
   "alarm-clock-plus",
   "bell",
   "bell-check",
@@ -19,7 +20,6 @@ const ICON_NAMES = [
   "square-dashed-top-solid",
   "trash",
   "triangle-alert",
-  "volume-1",
   "volume-2",
   "whistle",
   "x"
