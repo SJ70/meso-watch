@@ -151,7 +151,11 @@ h1 {
   line-height: 1.2;
 }
 
+/* --timer-color is set per card from the timer's color setting (see
+   applyTimerColor in timerColor.js); the default is the app accent. */
 .timer-card {
+  --timer-color: var(--accent);
+  --timer-color-dark: color-mix(in srgb, var(--timer-color) 78%, #000);
   position: relative;
   display: grid;
   grid-template-columns: 1fr;
@@ -734,6 +738,144 @@ h1 {
   margin-bottom: 10px;
 }
 
+.color-setting {
+  margin-bottom: 10px;
+}
+
+.color-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* A round swatch filled with --swatch; selected gets an outer ring. */
+.color-option {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background: var(--swatch);
+  border: 2px solid transparent;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+
+.color-option:hover {
+  transform: scale(1.1);
+}
+
+.color-option.is-selected {
+  border-color: var(--card);
+  outline: 2px solid var(--ink);
+}
+
+/* Custom pick: a rainbow until a non-preset color is chosen, then that
+   color. Toggles the picker below. */
+.color-option-custom {
+  background: var(--swatch, conic-gradient(#e85d3f, #e8b03f, #4caf6e, #36b5a8, #3f8fe8, #8a63e8, #e2508f, #e85d3f));
+}
+
+.color-option-custom.is-open {
+  outline: 2px solid var(--accent);
+}
+
+/* In-app HSV picker (see timerColor.js): saturation/brightness square
+   tinted by --picker-hue, a hue bar, and a hex field. */
+.color-picker {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+
+.color-picker[hidden] {
+  display: none;
+}
+
+.color-picker-sv,
+.color-picker-hue {
+  position: relative;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+.color-picker-sv {
+  height: 110px;
+  border-radius: 4px;
+  background:
+    linear-gradient(to top, #000, transparent),
+    linear-gradient(to right, #fff, transparent),
+    var(--picker-hue, red);
+}
+
+.color-picker-hue {
+  height: 10px;
+  border-radius: 999px;
+  background: linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00);
+}
+
+.color-picker-thumb {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.color-picker-hue .color-picker-thumb {
+  top: 50%;
+}
+
+.color-picker-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.color-picker-preview {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  background: var(--swatch);
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.25);
+}
+
+.color-picker-hex {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 8px;
+  color: var(--ink);
+  background: #303b47;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+}
+
+.color-picker-hex:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Small color dot at the start of the 외형 row's preview. */
+.settings-nav-color {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  background: var(--swatch);
+  border-radius: 50%;
+}
+
 .icon-options {
   display: flex;
   flex-wrap: wrap;
@@ -854,8 +996,8 @@ button:disabled {
 .timer-card:not(.is-running):not(.is-finished) .start-button,
 .timer-card.is-finished .reset-button {
   color: #fff;
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--timer-color);
+  border-color: var(--timer-color);
 }
 
 .timer-card:not(.is-running):not(.is-finished) .start-button:hover,
@@ -863,8 +1005,8 @@ button:disabled {
 .timer-card.is-finished .reset-button:hover,
 .timer-card.is-finished .reset-button:focus-visible {
   color: #fff;
-  background: var(--accent-dark);
-  border-color: var(--accent-dark);
+  background: var(--timer-color-dark);
+  border-color: var(--timer-color-dark);
 }
 
 .settings-toggle {
@@ -1144,6 +1286,7 @@ button:disabled {
    main page's 시간/알람/외형 rows. */
 .name-input,
 .shortcut-input,
+.color-picker-hex,
 .icon-select-trigger,
 .duration-fields,
 .settings-nav-row {
@@ -1152,6 +1295,7 @@ button:disabled {
 
 .name-input:hover,
 .shortcut-input:hover,
+.color-picker-hex:hover,
 .icon-select-trigger:hover,
 .duration-fields:hover,
 .toggle-switch:hover .toggle-track {

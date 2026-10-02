@@ -63,6 +63,20 @@ export const PROGRESS_STYLES = [
 export const DEFAULT_PROGRESS_STYLE = PROGRESS_STYLES[0].id;
 
 // Seeded once for a fresh install (see meso-watch-defaults-seeded in app.js).
+// Preset swatches for a timer's color (progress ring/gauge + start button).
+// The first one matches --accent in color.css, the default.
+export const TIMER_COLORS = [
+  { value: "#e85d3f", label: "주황" },
+  { value: "#e8b03f", label: "노랑" },
+  { value: "#4caf6e", label: "초록" },
+  { value: "#36b5a8", label: "청록" },
+  { value: "#3f8fe8", label: "파랑" },
+  { value: "#8a63e8", label: "보라" },
+  { value: "#e2508f", label: "분홍" },
+  { value: "#7d8794", label: "회색" },
+];
+export const DEFAULT_TIMER_COLOR = TIMER_COLORS[0].value;
+
 export const DEFAULT_TIMERS = [
   { name: "몬스터 리젠", totalMs: 7500, alarmType: "beep", icon: "attack.png" },
   { name: "야누스 설치", totalMs: 70000, alarmType: "bell", icon: "sol-janus.png" },

@@ -26,6 +26,7 @@ import {
 } from "./constants.js";
 import { iconSelectMarkup, setupIconSelect, updateIconSelect } from "./iconSelect.js";
 import { loadTimerProgressStyle, saveTimerProgressStyle, removeTimerProgressStyle, progressStyleSettingMarkup, setupProgressStyleSelect, updateProgressStyleSelect } from "./timerProgress.js";
+import { loadTimerColor, saveTimerColor, removeTimerColor, applyTimerColor, timerColorSettingMarkup, setupTimerColorSetting, updateTimerColorSetting } from "./timerColor.js";
 import { openDialog, registerDialogShrinkOnClose } from "./dialog-utils.js";
 import { previewAlarmSound, effectiveVolume, notifyDone, stopAlarm } from "./sound.js";
 import { formatShortcut, NORMALIZE_MODIFIER_CODE } from "./shortcuts.js";
@@ -501,7 +502,7 @@ function restartAlarmBlink(timer) {
 function buildTimer(id, totalMs, fallbackIndex = null) {
   const name = localStorage.getItem(`meso-watch-timer-${id}-name`)
     || (fallbackIndex === null ? defaultTimerName(null) : `타이머 ${fallbackIndex + 1}`);
-  return { id, name, totalMs, remainingSeconds: Math.floor(totalMs / 1000), remainingMs: totalMs, timerId: null, alarmIntervalId: null, remainingAlarmCount: 0, shortcut: loadShortcut(id), icon: loadTimerIcon(id), volume: loadTimerVolume(id), alarmType: loadTimerAlarmType(id), alarmRepeatCount: loadTimerAlarmRepeatCount(id), alarmRepeatUnlimited: loadTimerAlarmRepeatUnlimited(id), autoRestart: loadTimerAutoRestart(id), restartDelay: loadTimerRestartDelay(id), restartHandle: null, progressStyle: loadTimerProgressStyle(id), isDraft: false };
+  return { id, name, totalMs, remainingSeconds: Math.floor(totalMs / 1000), remainingMs: totalMs, timerId: null, alarmIntervalId: null, remainingAlarmCount: 0, shortcut: loadShortcut(id), icon: loadTimerIcon(id), volume: loadTimerVolume(id), alarmType: loadTimerAlarmType(id), alarmRepeatCount: loadTimerAlarmRepeatCount(id), alarmRepeatUnlimited: loadTimerAlarmRepeatUnlimited(id), autoRestart: loadTimerAutoRestart(id), restartDelay: loadTimerRestartDelay(id), restartHandle: null, progressStyle: loadTimerProgressStyle(id), color: loadTimerColor(id), isDraft: false };
 }
 
 function createTimer(minutes = DEFAULT_TIMER_MINUTES) {
@@ -594,6 +595,7 @@ function renderTimer(timer, target = timerList) {
   element.dataset.timerId = timer.id;
   element.dataset.progressStyle = timer.progressStyle;
   element.style.setProperty("--timer-icon", timerIconUrl(timer));
+  applyTimerColor(element, timer.color);
   timer.element = element;
   element.innerHTML = `
     <svg class="timer-progress-visual ring" aria-hidden="true"><rect pathLength="1" /></svg>
@@ -727,6 +729,7 @@ function renderTimer(timer, target = timerList) {
       <div class="settings-page" data-page="appearance" hidden>
         ${settingsSubpageHeaderMarkup("appearance")}
         ${progressStyleSettingMarkup(timer)}
+        ${timerColorSettingMarkup(timer)}
         <div class="icon-setting">
           <span class="control-label">아이콘</span>
           <div class="icon-options" role="group" aria-label="타이머 ${timer.id} 아이콘 선택">
@@ -757,7 +760,7 @@ function renderTimer(timer, target = timerList) {
     startButtonEl: element.querySelector(".start-button"),
     pauseButtonEl: element.querySelector(".pause-button"),
   };
-  let draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon, volume: timer.volume, alarmType: timer.alarmType, alarmRepeatCount: timer.alarmRepeatCount, alarmRepeatUnlimited: timer.alarmRepeatUnlimited, autoRestart: timer.autoRestart, restartDelay: timer.restartDelay, progressStyle: timer.progressStyle };
+  let draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon, volume: timer.volume, alarmType: timer.alarmType, alarmRepeatCount: timer.alarmRepeatCount, alarmRepeatUnlimited: timer.alarmRepeatUnlimited, autoRestart: timer.autoRestart, restartDelay: timer.restartDelay, progressStyle: timer.progressStyle, color: timer.color };
   function updateIconOptionsUi() {
     element.querySelectorAll(".icon-option").forEach((button) => {
       button.classList.toggle("is-selected", button.dataset.icon === draft.icon);
@@ -787,7 +790,7 @@ function renderTimer(timer, target = timerList) {
     updateProgressStyleSelect(element, draft.progressStyle);
   }
   function resetDraftFromTimer() {
-    draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon, volume: timer.volume, alarmType: timer.alarmType, alarmRepeatCount: timer.alarmRepeatCount, alarmRepeatUnlimited: timer.alarmRepeatUnlimited, autoRestart: timer.autoRestart, restartDelay: timer.restartDelay, progressStyle: timer.progressStyle };
+    draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon, volume: timer.volume, alarmType: timer.alarmType, alarmRepeatCount: timer.alarmRepeatCount, alarmRepeatUnlimited: timer.alarmRepeatUnlimited, autoRestart: timer.autoRestart, restartDelay: timer.restartDelay, progressStyle: timer.progressStyle, color: timer.color };
     element.querySelector(".name-input").value = timer.name;
     setDurationWheels(timer.totalMs);
     element.querySelector(".shortcut-button").value = formatShortcut(timer.shortcut);
@@ -797,6 +800,7 @@ function renderTimer(timer, target = timerList) {
     updateAlarmRepeatSettingUi();
     updateAutoRestartSettingUi();
     updateProgressStyleSettingUi();
+    updateTimerColorSetting(element, draft.color);
     showSettingsPage("main");
   }
   element.querySelectorAll(".icon-option").forEach((button) => button.addEventListener("click", () => {
@@ -834,6 +838,13 @@ function renderTimer(timer, target = timerList) {
   const progressStyleSelect = setupProgressStyleSelect(element, (progressStyleId) => {
     draft.progressStyle = progressStyleId;
     updateProgressStyleSettingUi();
+  });
+  const timerColorSetting = setupTimerColorSetting(element, (color) => {
+    draft.color = color;
+    updateTimerColorSetting(element, color);
+  }, () => {
+    // The picker opening/closing changes the dialog's height.
+    if (settingsModal.open) syncWindowToDialog(settingsModal);
   });
   element.querySelector(".settings-toggle").appendChild(createIconElement("settings", { width: 16, height: 16 }));
   element.querySelector(".remove-button").appendChild(createIconElement("trash", { width: 16, height: 16 }));
@@ -909,6 +920,7 @@ function renderTimer(timer, target = timerList) {
       localStorage.removeItem(`meso-watch-timer-${timer.id}-auto-restart`);
       localStorage.removeItem(`meso-watch-timer-${timer.id}-restart-delay`);
       removeTimerProgressStyle(timer.id);
+      removeTimerColor(timer.id);
       if (timer.id === nextTimerId - 1) setNextTimerId(nextTimerId - 1);
       element.parentElement?.remove();
     }
@@ -928,6 +940,7 @@ function renderTimer(timer, target = timerList) {
     timer.autoRestart = draft.autoRestart;
     timer.restartDelay = draft.restartDelay;
     timer.progressStyle = draft.progressStyle;
+    timer.color = draft.color;
     localStorage.setItem(`meso-watch-timer-${timer.id}-name`, timer.name);
     localStorage.setItem(`meso-watch-timer-${timer.id}-icon`, timer.icon);
     localStorage.setItem(`meso-watch-timer-${timer.id}-volume`, String(timer.volume));
@@ -937,8 +950,10 @@ function renderTimer(timer, target = timerList) {
     localStorage.setItem(`meso-watch-timer-${timer.id}-auto-restart`, String(timer.autoRestart));
     localStorage.setItem(`meso-watch-timer-${timer.id}-restart-delay`, String(timer.restartDelay));
     saveTimerProgressStyle(timer);
+    saveTimerColor(timer);
     element.querySelector(".timer-label").textContent = timer.name;
     element.style.setProperty("--timer-icon", timerIconUrl(timer));
+    applyTimerColor(element, timer.color);
     if (durationChanged) adjustTimerDuration(timer, previousTotalMs);
     if (timer.isDraft) {
       timer.isDraft = false;
@@ -976,6 +991,7 @@ function renderTimer(timer, target = timerList) {
       localStorage.removeItem(`meso-watch-timer-${timer.id}-auto-restart`);
       localStorage.removeItem(`meso-watch-timer-${timer.id}-restart-delay`);
       removeTimerProgressStyle(timer.id);
+      removeTimerColor(timer.id);
       if (timer.id === nextTimerId - 1) setNextTimerId(nextTimerId - 1);
       element.parentElement?.remove();
     }
@@ -1003,6 +1019,7 @@ function renderTimer(timer, target = timerList) {
     currentSettingsPage = page;
     alarmTypeSelect.close();
     progressStyleSelect.close();
+    timerColorSetting.close();
     element.querySelectorAll(".settings-page").forEach((settingsPage) => {
       settingsPage.hidden = settingsPage.dataset.page !== page;
     });
@@ -1037,9 +1054,13 @@ function renderTimer(timer, target = timerList) {
     );
     const progressStyle = PROGRESS_STYLES.find((item) => item.id === draft.progressStyle) ?? PROGRESS_STYLES[0];
     const timerIcon = draft.icon === NO_ICON ? null : Object.assign(document.createElement("img"), { src: `../public/icons/${draft.icon}`, alt: "" });
+    const colorDot = Object.assign(document.createElement("span"), { className: "settings-nav-color" });
+    colorDot.style.setProperty("--swatch", draft.color);
     preview("appearance").replaceChildren(
       previewIcon(progressStyle.icon),
       previewText(`${progressStyle.label} · `),
+      colorDot,
+      previewText(" · "),
       timerIcon ?? previewText("아이콘 없음"),
     );
   }
@@ -1374,6 +1395,7 @@ function removeTimer(timer) {
   localStorage.removeItem(`meso-watch-timer-${timer.id}-auto-restart`);
   localStorage.removeItem(`meso-watch-timer-${timer.id}-restart-delay`);
   removeTimerProgressStyle(timer.id);
+  removeTimerColor(timer.id);
   timers = timers.filter((item) => item !== timer);
   timer.element = null;
   renderAllTimers();
