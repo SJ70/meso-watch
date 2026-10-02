@@ -29,7 +29,7 @@ import { loadTimerProgressStyle, saveTimerProgressStyle, removeTimerProgressStyl
 import { loadTimerColor, saveTimerColor, removeTimerColor, applyTimerColor, timerColorSettingMarkup, setupTimerColorSetting, updateTimerColorSetting } from "./timerColor.js";
 import { loadCustomSounds, getCustomSounds, addCustomSound, deleteCustomSound, MAX_CUSTOM_SOUND_BYTES } from "./customSounds.js";
 import { openDialog, registerDialogShrinkOnClose } from "./dialog-utils.js";
-import { previewAlarmSound, effectiveVolume, notifyDone, stopAlarm } from "./sound.js";
+import { previewAlarmSound, stopAlarmPreview, effectiveVolume, notifyDone, stopAlarm } from "./sound.js";
 import { formatShortcut, NORMALIZE_MODIFIER_CODE } from "./shortcuts.js";
 import { checkForUpdate } from "./updateCheck.js";
 import { configureWindowSizeState, syncWindowToContent, syncWindowToDialog } from "./windowSize.js";
@@ -809,6 +809,7 @@ function renderTimer(timer, target = timerList) {
 
   const settingsModal = element.querySelector(".settings-modal");
   registerDialogShrinkOnClose(settingsModal);
+  settingsModal.addEventListener("close", stopAlarmPreview);
   // updateTimerElement runs on every tick (up to display refresh rate while
   // any timer is running) - cache the sub-elements it touches once here
   // instead of re-querying the DOM on every single call.
@@ -1143,6 +1144,8 @@ function renderTimer(timer, target = timerList) {
   // until the main page's 저장/취소.
   let currentSettingsPage = "main";
   function showSettingsPage(page) {
+    // A sound previewed on the alarm page stops once you leave it.
+    if (page !== "alarm") stopAlarmPreview();
     currentSettingsPage = page;
     alarmTypeSelect.close();
     progressStyleSelect.close();

@@ -183,11 +183,14 @@ export function playNotifySound(level, alarmType = "beep") {
 // adjusts them; closing the previous preview's context first stops it
 // immediately, so quick successive changes don't stack overlapping sounds.
 let previewAudioContext = null;
+// Cuts off whatever preview is playing - also used when the user leaves the
+// alarm settings page, so a long registered sound doesn't keep going.
+export function stopAlarmPreview() {
+  previewAudioContext?.close();
+  previewAudioContext = null;
+}
 export function previewAlarmSound(level, alarmType = "beep") {
-  if (previewAudioContext) {
-    previewAudioContext.close();
-    previewAudioContext = null;
-  }
+  stopAlarmPreview();
   if (typeof AudioContext === "undefined" || level === 0) return;
   previewAudioContext = new AudioContext();
   playAlarmType(previewAudioContext, level, alarmType);
