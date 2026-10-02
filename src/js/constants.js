@@ -50,10 +50,11 @@ export const RESTART_DELAY_STEP = 0.5;
 export const DEFAULT_RESTART_DELAY = 0;
 
 // ids must match the data-progress-style values the CSS in timer-progress.css keys off.
+// icon is an svg name from src/svg/icons.js, shown left of the label.
 export const PROGRESS_STYLES = [
-  { id: "ring", label: "링" },
-  { id: "gauge-v", label: "게이지 (세로)" },
-  { id: "gauge-h", label: "게이지 (가로)" },
+  { id: "ring", label: "링", icon: "square-dashed-top-solid" },
+  { id: "gauge-v", label: "게이지 (세로)", icon: "square-arrow-down" },
+  { id: "gauge-h", label: "게이지 (가로)", icon: "square-arrow-left" },
 ];
 export const DEFAULT_PROGRESS_STYLE = PROGRESS_STYLES[0].id;
 

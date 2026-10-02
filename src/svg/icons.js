@@ -6,6 +6,9 @@ const ICON_NAMES = [
   "rotate-ccw-clock",
   "settings",
   "square",
+  "square-arrow-down",
+  "square-arrow-left",
+  "square-dashed-top-solid",
   "trash",
   "x"
 ];

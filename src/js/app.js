@@ -22,7 +22,7 @@ import {
   DEFAULT_RESTART_DELAY,
   DEFAULT_TIMERS,
 } from "./constants.js";
-import { loadTimerProgressStyle, saveTimerProgressStyle, removeTimerProgressStyle, progressStyleSettingMarkup } from "./timerProgress.js";
+import { loadTimerProgressStyle, saveTimerProgressStyle, removeTimerProgressStyle, progressStyleSettingMarkup, setupProgressStyleSelect, updateProgressStyleSelect } from "./timerProgress.js";
 import { openDialog, registerDialogShrinkOnClose } from "./dialog-utils.js";
 import { previewAlarmSound, effectiveVolume, notifyDone, stopAlarm } from "./sound.js";
 import { formatShortcut, NORMALIZE_MODIFIER_CODE } from "./shortcuts.js";
@@ -716,7 +716,7 @@ function renderTimer(timer, target = timerList) {
     element.querySelector(".restart-delay-value").textContent = draft.restartDelay === 0 ? "없음" : `${draft.restartDelay}초`;
   }
   function updateProgressStyleSettingUi() {
-    element.querySelector(".progress-style-select").value = draft.progressStyle;
+    updateProgressStyleSelect(element, draft.progressStyle);
   }
   function resetDraftFromTimer() {
     draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon, volume: timer.volume, alarmType: timer.alarmType, alarmRepeatCount: timer.alarmRepeatCount, alarmRepeatUnlimited: timer.alarmRepeatUnlimited, autoRestart: timer.autoRestart, restartDelay: timer.restartDelay, progressStyle: timer.progressStyle };
@@ -729,6 +729,7 @@ function renderTimer(timer, target = timerList) {
     updateAlarmTypeSettingUi();
     updateAlarmRepeatSettingUi();
     updateAutoRestartSettingUi();
+    progressStyleSelect.close();
     updateProgressStyleSettingUi();
   }
   element.querySelectorAll(".icon-option").forEach((button) => button.addEventListener("click", () => {
@@ -762,8 +763,9 @@ function renderTimer(timer, target = timerList) {
     draft.restartDelay = Number(event.target.value);
     updateAutoRestartSettingUi();
   });
-  element.querySelector(".progress-style-select").addEventListener("change", (event) => {
-    draft.progressStyle = event.target.value;
+  const progressStyleSelect = setupProgressStyleSelect(element, (progressStyleId) => {
+    draft.progressStyle = progressStyleId;
+    updateProgressStyleSettingUi();
   });
   element.querySelectorAll(".select-wrapper").forEach((wrapper) => wrapper.appendChild(createIconElement("chevron-down", { width: 16, height: 16 })));
   element.querySelector(".settings-toggle").appendChild(createIconElement("settings", { width: 16, height: 16 }));

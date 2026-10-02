@@ -905,6 +905,75 @@ button:disabled {
   -webkit-appearance: none;
 }
 
+.icon-select {
+  position: relative;
+}
+
+.icon-select-trigger,
+.icon-select-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-align: left;
+}
+
+.icon-select-trigger > svg {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.icon-select-current-icon,
+.icon-select-option-icon {
+  display: flex;
+  flex: 0 0 auto;
+}
+
+.icon-select-options {
+  position: absolute;
+  top: calc(100% + 3px);
+  right: 0;
+  left: 0;
+  z-index: 10;
+  display: grid;
+  padding: 3px;
+  background: #303b47;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.icon-select-options[hidden] {
+  display: none;
+}
+
+.icon-select-option {
+  width: 100%;
+  padding: 6px 8px;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  border-radius: 3px;
+  font-weight: 700;
+  font-size: 0.78rem;
+}
+
+.icon-select-option:hover,
+.icon-select-option:focus-visible {
+  outline: none;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.icon-select-option.is-selected {
+  color: var(--accent);
+}
+
+.icon-select.is-open .icon-select-trigger {
+  border-color: var(--accent);
+}
+
 .alarm-type-select:focus,
 .progress-style-select:focus {
   outline: none;
