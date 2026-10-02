@@ -204,14 +204,12 @@ export function effectiveVolume(masterVolume, timerVolume) {
   return Math.round(masterVolume * (timerVolume / 100));
 }
 
-// onStateChange(restarted) fires whenever timer.remainingAlarmCount changes -
-// the blink effect (CSS .is-alarming, driven off remainingAlarmCount > 0)
-// tracks it, so it's consumed one per second right alongside the beeps
-// instead of running on a separate isAlarming on/off flag. restarted is true
-// only on the call that (re)seeds remainingAlarmCount to maxRepeats, so the
-// caller knows to restart the blink animation from scratch (see
-// restartAlarmBlink in app.js) rather than let it keep running toward its
-// old, now-stale iteration count.
+// onBeep fires with every sound - the caller hangs the bounce and blink off
+// it, so all three come from the same tick and stay in step.
+// onStateChange(restarted) fires whenever timer.remainingAlarmCount changes
+// (the card's .is-alarming state is driven off remainingAlarmCount > 0).
+// restarted is true only on the call that (re)seeds remainingAlarmCount to
+// maxRepeats.
 export function notifyDone(timer, getMasterVolume, onBeep, maxRepeats, onStateChange) {
   // Read timer.volume/alarmType and the master volume fresh on every beep,
   // not just once at start, so changing the volume while the alarm is

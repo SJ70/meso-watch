@@ -627,17 +627,28 @@ function alarmRepeatMax(timer) {
   return timer.alarmRepeatUnlimited ? UNLIMITED_ALARM_REPEAT_COUNT : timer.alarmRepeatCount;
 }
 
-// classList.toggle("is-alarming", true) when it's already true is a no-op,
-// so a refreshed remainingAlarmCount (see notifyDone's "restarted" callback)
-// wouldn't otherwise restart the CSS animation to match the new count -
-// forcing it off, a reflow, then back on restarts it from iteration 1.
-function restartAlarmBlink(timer) {
+// One blink: the white flash (::after) and the icon (::before) jump to full
+// opacity and fade back to their resting look over one alarm interval.
+// Started by every beep together with the sound and the bounce (see the
+// onBeep passed to notifyDone), so the three never drift apart; each beep
+// restarts it. A blink that runs out ends exactly at the resting look, so
+// the alarm's natural end never snaps.
+const ALARM_BLINK_MS = 1000;
+function blinkTimerCard(timer) {
   const element = getTimerElement(timer);
   if (!element) return;
-  element.style.setProperty("--alarm-blink-count", alarmRepeatMax(timer));
-  element.classList.remove("is-alarming");
-  void element.offsetWidth;
-  element.classList.add("is-alarming");
+  cancelTimerCardBlink(timer);
+  const timing = { duration: ALARM_BLINK_MS, easing: "linear" };
+  timer.blinkAnimations = [
+    element.animate([{ opacity: 1 }, { opacity: 0 }], { ...timing, pseudoElement: "::after" }),
+    element.animate([{ opacity: 1 }, { opacity: 0.1 }], { ...timing, pseudoElement: "::before" }),
+  ];
+}
+
+// Stops a blink mid-fade, e.g. when the alarm is stopped by hand.
+function cancelTimerCardBlink(timer) {
+  timer.blinkAnimations?.forEach((animation) => animation.cancel());
+  timer.blinkAnimations = null;
 }
 
 function buildTimer(id, totalMs, fallbackIndex = null) {
@@ -713,8 +724,8 @@ function updateTimerElement(timer) {
   shortcutBadgeEl.textContent = formatShortcut(timer.shortcut);
   element.classList.toggle("is-running", Boolean(timer.timerId));
   element.classList.toggle("is-finished", Boolean(timer.isFinished));
-  element.style.setProperty("--alarm-blink-count", alarmRepeatMax(timer));
   element.classList.toggle("is-alarming", timer.remainingAlarmCount > 0);
+  if (!(timer.remainingAlarmCount > 0)) cancelTimerCardBlink(timer);
   element.classList.toggle("has-progress", timer.remainingMs < timer.totalMs);
   element.dataset.progressStyle = timer.progressStyle;
   // While a delayed restart is pending, the gauge refills from empty to
@@ -1512,8 +1523,11 @@ function tickTimer(timer) {
     // The alarm (sound + blink) runs on its own repeat-count schedule
     // regardless of auto-restart - it's a separate notification, not
     // something the countdown needs to wait on before starting over.
-    notifyDone(timer, () => volume, () => bounceTimerCard(timer), alarmRepeatMax(timer), (restarted) => {
-      if (restarted) restartAlarmBlink(timer);
+    // Sound, bounce and blink all fire from the same beep.
+    notifyDone(timer, () => volume, () => {
+      bounceTimerCard(timer);
+      blinkTimerCard(timer);
+    }, alarmRepeatMax(timer), () => {
       // Once the alarm has fully run its course, return the card to a
       // stopped state showing the original duration instead of sitting at
       // 00:00 indefinitely. If auto-restart already kicked the countdown
