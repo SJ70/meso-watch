@@ -55,10 +55,17 @@ export const DEFAULT_RESTART_DELAY = 0;
 
 // ids must match the data-progress-style values the CSS in timer-progress.css keys off.
 // icon is an svg name from src/svg/icons.js, shown left of the label.
+// warnBrightColor: whether picking a too-bright timer color shows the
+// readability warning (see TOO_BRIGHT_LUMINANCE in timerColor.js). Set it
+// to true when the style fills the area behind the white timer digits
+// with the timer color (the gauges), false when the digits always sit on
+// the dark card (the ring only colors the card's edge).
+// When adding a new style, decide this explicitly: does its colored fill
+// ever end up behind the digits?
 export const PROGRESS_STYLES = [
-  { id: "ring", label: "링", icon: "square-dashed-top-solid" },
-  { id: "gauge-v", label: "게이지 (세로)", icon: "square-arrow-down" },
-  { id: "gauge-h", label: "게이지 (가로)", icon: "square-arrow-left" },
+  { id: "ring", label: "링", icon: "square-dashed-top-solid", warnBrightColor: false },
+  { id: "gauge-v", label: "게이지 (세로)", icon: "square-arrow-down", warnBrightColor: true },
+  { id: "gauge-h", label: "게이지 (가로)", icon: "square-arrow-left", warnBrightColor: true },
 ];
 export const DEFAULT_PROGRESS_STYLE = PROGRESS_STYLES[0].id;
 

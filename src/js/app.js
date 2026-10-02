@@ -789,6 +789,10 @@ function renderTimer(timer, target = timerList) {
   function updateProgressStyleSettingUi() {
     updateProgressStyleSelect(element, draft.progressStyle);
   }
+  function updateTimerColorSettingUi() {
+    const progressStyle = PROGRESS_STYLES.find((item) => item.id === draft.progressStyle) ?? PROGRESS_STYLES[0];
+    updateTimerColorSetting(element, draft.color, { warnBrightColor: progressStyle.warnBrightColor });
+  }
   function resetDraftFromTimer() {
     draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon, volume: timer.volume, alarmType: timer.alarmType, alarmRepeatCount: timer.alarmRepeatCount, alarmRepeatUnlimited: timer.alarmRepeatUnlimited, autoRestart: timer.autoRestart, restartDelay: timer.restartDelay, progressStyle: timer.progressStyle, color: timer.color };
     element.querySelector(".name-input").value = timer.name;
@@ -800,7 +804,7 @@ function renderTimer(timer, target = timerList) {
     updateAlarmRepeatSettingUi();
     updateAutoRestartSettingUi();
     updateProgressStyleSettingUi();
-    updateTimerColorSetting(element, draft.color);
+    updateTimerColorSettingUi();
     showSettingsPage("main");
   }
   element.querySelectorAll(".icon-option").forEach((button) => button.addEventListener("click", () => {
@@ -838,10 +842,12 @@ function renderTimer(timer, target = timerList) {
   const progressStyleSelect = setupProgressStyleSelect(element, (progressStyleId) => {
     draft.progressStyle = progressStyleId;
     updateProgressStyleSettingUi();
+    // Whether a too-bright color warrants the warning depends on the style.
+    updateTimerColorSettingUi();
   });
   const timerColorSetting = setupTimerColorSetting(element, (color) => {
     draft.color = color;
-    updateTimerColorSetting(element, color);
+    updateTimerColorSettingUi();
   }, () => {
     // The picker opening/closing changes the dialog's height.
     if (settingsModal.open) syncWindowToDialog(settingsModal);

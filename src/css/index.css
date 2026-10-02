@@ -748,6 +748,30 @@ h1 {
   gap: 6px;
 }
 
+/* Too-bright-color warning, shown only while the picker is open (it lives
+   inside .color-picker), floating over the top of the palette.
+   Click-through so dragging on the palette under it still works. */
+.color-warning {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  left: 14px;
+  z-index: 5;
+  padding: 6px 8px;
+  color: #1a1206;
+  background: #f2c14e;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  font-weight: 700;
+  font-size: 0.66rem;
+  line-height: 1.35;
+  pointer-events: none;
+}
+
+.color-warning[hidden] {
+  display: none;
+}
+
 /* A round swatch filled with --swatch; selected gets an outer ring. */
 .color-option {
   position: relative;
@@ -783,6 +807,7 @@ h1 {
 /* In-app HSV picker (see timerColor.js): saturation/brightness square
    tinted by --picker-hue, a hue bar, and a hex field. */
 .color-picker {
+  position: relative;
   display: grid;
   gap: 8px;
   margin-top: 8px;

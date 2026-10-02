@@ -24,7 +24,21 @@ export function applyTimerColor(element, color) {
   element.style.setProperty("--timer-color", color);
 }
 
-const clamp01 =(value) => Math.min(1, Math.max(0, value));
+const clamp01 = (value) => Math.min(1, Math.max(0, value));
+
+// WCAG relative luminance (0 = black, 1 = white).
+function relativeLuminance(hex) {
+  const [r, g, b] = [1, 3, 5].map((index) => {
+    const channel = parseInt(hex.slice(index, index + 2), 16) / 255;
+    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+// Above this, the white digits/button icon drawn over the color get hard to
+// make out (under ~1.5:1 contrast with white). Well above every preset
+// (the brightest, yellow, is ~0.49), so only quite pale colors trip it.
+const TOO_BRIGHT_LUMINANCE = 0.65;
 
 function hexToHsv(hex) {
   const [r, g, b] = [1, 3, 5].map((index) => parseInt(hex.slice(index, index + 2), 16) / 255);
@@ -66,6 +80,7 @@ export function timerColorSettingMarkup(timer) {
             <button class="color-option color-option-custom" type="button" aria-expanded="false" aria-label="직접 선택" title="직접 선택"></button>
           </div>
           <div class="color-picker" hidden>
+            <span class="color-warning" role="status" hidden>지나치게 밝은 색상을 사용하면 타이머 식별이 어려울 수 있습니다!</span>
             <div class="color-picker-sv" aria-label="채도 / 밝기"><span class="color-picker-thumb"></span></div>
             <div class="color-picker-hue" aria-label="색조"><span class="color-picker-thumb"></span></div>
             <div class="color-picker-row">
@@ -154,7 +169,10 @@ export function setupTimerColorSetting(container, onSelect, onToggle) {
   return { close: () => setOpen(false, { notify: false }) };
 }
 
-export function updateTimerColorSetting(container, color) {
+// warnBrightColor comes from the timer's current progress style (see
+// PROGRESS_STYLES in constants.js) - the too-bright warning only matters
+// for styles that put the color behind the digits.
+export function updateTimerColorSetting(container, color, { warnBrightColor = true } = {}) {
   const root = container.querySelector(".color-setting");
   let matchedPreset = false;
   root.querySelectorAll("button.color-option:not(.color-option-custom)").forEach((button) => {
@@ -181,4 +199,5 @@ export function updateTimerColorSetting(container, color) {
   root.querySelector(".color-picker-preview").style.setProperty("--swatch", color);
   const hexInput = root.querySelector(".color-picker-hex");
   if (document.activeElement !== hexInput) hexInput.value = color;
+  root.querySelector(".color-warning").hidden = !warnBrightColor || relativeLuminance(color) <= TOO_BRIGHT_LUMINANCE;
 }
