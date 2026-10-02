@@ -22,6 +22,7 @@ import {
   DEFAULT_RESTART_DELAY,
   DEFAULT_TIMERS,
 } from "./constants.js";
+import { iconSelectMarkup, setupIconSelect, updateIconSelect } from "./iconSelect.js";
 import { loadTimerProgressStyle, saveTimerProgressStyle, removeTimerProgressStyle, progressStyleSettingMarkup, setupProgressStyleSelect, updateProgressStyleSelect } from "./timerProgress.js";
 import { openDialog, registerDialogShrinkOnClose } from "./dialog-utils.js";
 import { previewAlarmSound, effectiveVolume, notifyDone, stopAlarm } from "./sound.js";
@@ -624,11 +625,7 @@ function renderTimer(timer, target = timerList) {
       </div>
       <div class="alarm-type-setting">
         <span class="control-label">알람음</span>
-        <div class="select-wrapper">
-          <select class="alarm-type-select" aria-label="타이머 ${timer.id} 알람음">
-            ${ALARM_TYPES.map((alarmType) => `<option value="${alarmType.id}"${alarmType.id === timer.alarmType ? " selected" : ""}>${alarmType.label}</option>`).join("")}
-          </select>
-        </div>
+        ${iconSelectMarkup({ triggerClass: "alarm-type-select", ariaLabel: `타이머 ${timer.id} 알람음`, items: ALARM_TYPES })}
       </div>
       <div class="opacity-setting volume-setting">
         <div class="opacity-setting-header">
@@ -702,7 +699,7 @@ function renderTimer(timer, target = timerList) {
     valueDisplay.textContent = `${draft.volume}%`;
   }
   function updateAlarmTypeSettingUi() {
-    element.querySelector(".alarm-type-select").value = draft.alarmType;
+    updateIconSelect(element.querySelector(".alarm-type-setting .icon-select"), ALARM_TYPES, draft.alarmType);
   }
   function updateAlarmRepeatSettingUi() {
     element.querySelector(".alarm-repeat-count-slider").value = draft.alarmRepeatCount;
@@ -726,6 +723,7 @@ function renderTimer(timer, target = timerList) {
     element.querySelector(".shortcut-button").value = formatShortcut(timer.shortcut);
     updateIconOptionsUi();
     updateVolumeSettingUi();
+    alarmTypeSelect.close();
     updateAlarmTypeSettingUi();
     updateAlarmRepeatSettingUi();
     updateAutoRestartSettingUi();
@@ -743,8 +741,9 @@ function renderTimer(timer, target = timerList) {
   element.querySelector(".volume-slider-input").addEventListener("change", (event) => {
     previewAlarmSound(effectiveVolume(volume, Number(event.target.value)), draft.alarmType);
   });
-  element.querySelector(".alarm-type-select").addEventListener("change", (event) => {
-    draft.alarmType = event.target.value;
+  const alarmTypeSelect = setupIconSelect(element.querySelector(".alarm-type-setting .icon-select"), element, ALARM_TYPES, (alarmTypeId) => {
+    draft.alarmType = alarmTypeId;
+    updateAlarmTypeSettingUi();
     previewAlarmSound(effectiveVolume(volume, draft.volume), draft.alarmType);
   });
   element.querySelector(".alarm-repeat-count-slider").addEventListener("input", (event) => {
@@ -767,7 +766,6 @@ function renderTimer(timer, target = timerList) {
     draft.progressStyle = progressStyleId;
     updateProgressStyleSettingUi();
   });
-  element.querySelectorAll(".select-wrapper").forEach((wrapper) => wrapper.appendChild(createIconElement("chevron-down", { width: 16, height: 16 })));
   element.querySelector(".settings-toggle").appendChild(createIconElement("settings", { width: 16, height: 16 }));
   element.querySelector(".remove-button").appendChild(createIconElement("trash", { width: 16, height: 16 }));
   element.querySelector(".start-button").appendChild(createIconElement("play", { width: 16, height: 16 }));

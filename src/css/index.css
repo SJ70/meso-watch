@@ -876,19 +876,6 @@ button:disabled {
   outline-offset: 2px;
 }
 
-.select-wrapper {
-  position: relative;
-}
-
-.select-wrapper svg {
-  position: absolute;
-  top: 50%;
-  right: 8px;
-  transform: translateY(-50%);
-  color: var(--ink);
-  pointer-events: none;
-}
-
 .alarm-type-select,
 .progress-style-select {
   width: 100%;
@@ -906,6 +893,7 @@ button:disabled {
 }
 
 .icon-select {
+  --icon-select-option-height: 28px;
   position: relative;
 }
 
@@ -929,6 +917,8 @@ button:disabled {
 .icon-select-option-icon {
   display: flex;
   flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
 }
 
 .icon-select-options {
@@ -938,11 +928,34 @@ button:disabled {
   left: 0;
   z-index: 10;
   display: grid;
+  /* Show 5.5 options so the half-cut 6th one hints there's more to scroll. */
+  max-height: calc(var(--icon-select-option-height) * 5.5);
+  overflow-y: auto;
   padding: 3px;
   background: #303b47;
   border: 1px solid var(--line);
   border-radius: 4px;
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+/* electron.css hides scrollbars everywhere; the dropdown needs one so it's
+   obvious more options are below the first 5. */
+.icon-select-options::-webkit-scrollbar {
+  display: block;
+  width: 6px;
+}
+
+.icon-select-options::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.icon-select-options::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 3px;
+}
+
+.icon-select-options::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
 }
 
 .icon-select-options[hidden] {
@@ -951,6 +964,8 @@ button:disabled {
 
 .icon-select-option {
   width: 100%;
+  height: var(--icon-select-option-height);
+  box-sizing: border-box;
   padding: 6px 8px;
   color: var(--ink);
   background: transparent;

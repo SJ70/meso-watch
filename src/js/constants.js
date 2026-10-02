@@ -20,15 +20,17 @@ export const MAX_UI_ZOOM = 150;
 export const DEFAULT_TIMER_MINUTES = 1;
 
 // ids must match the keys of ALARM_PATTERNS in sound.js
+// icon (optional) is an svg name from src/svg/icons.js, shown left of the label.
 export const ALARM_TYPES = [
-  { id: "beep", label: "기본음" },
-  { id: "chime", label: "차임벨" },
-  { id: "alert", label: "경고음" },
-  { id: "bell", label: "종소리" },
-  { id: "ping", label: "핑" },
-  { id: "double", label: "더블비프" },
-  { id: "arpeggio", label: "아르페지오" },
-  { id: "siren", label: "사이렌" },
+  { id: "beep", label: "기본음", icon: "volume-1" },
+  { id: "chime", label: "차임벨", icon: "bell-check" },
+  { id: "alert", label: "경고음", icon: "triangle-alert" },
+  { id: "bell", label: "종소리", icon: "bell" },
+  { id: "ping", label: "핑", icon: "map-pin" },
+  { id: "double", label: "더블비프", icon: "volume-2" },
+  { id: "arpeggio", label: "아르페지오", icon: "chart-no-axes-column-increasing" },
+  { id: "siren", label: "사이렌", icon: "siren" },
+  { id: "whistle", label: "호루라기", icon: "whistle" },
 ];
 export const DEFAULT_ALARM_TYPE = ALARM_TYPES[0].id;
 

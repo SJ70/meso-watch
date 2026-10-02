@@ -25,6 +25,62 @@ function scheduleSweep(audioContext, { startFrequency, endFrequency, type = "saw
   oscillator.stop(startTime + duration);
 }
 
+// Schedules [offsetSeconds, value] points on an AudioParam: jumps to the
+// first value at startTime, then ramps linearly through the rest.
+function automate(param, points, startTime) {
+  const [[, firstValue], ...rest] = points;
+  param.setValueAtTime(firstValue, startTime);
+  rest.forEach(([offset, value]) => param.linearRampToValueAtTime(value, startTime + offset));
+}
+
+// A more expressive tone than scheduleTone: pitch curve, optional vibrato,
+// and an attack/hold/release envelope instead of an instant-on exponential decay.
+function scheduleVoice(audioContext, { type = "sawtooth", frequencies, startTime, duration, peakGain, attack = 0.01, release = duration - attack, vibrato }) {
+  const oscillator = audioContext.createOscillator();
+  const gain = audioContext.createGain();
+  oscillator.type = type;
+  automate(oscillator.frequency, frequencies, startTime);
+  oscillator.connect(gain);
+  gain.connect(audioContext.destination);
+  const endTime = startTime + duration;
+  gain.gain.setValueAtTime(0.001, startTime);
+  gain.gain.exponentialRampToValueAtTime(peakGain, startTime + attack);
+  gain.gain.setValueAtTime(peakGain, endTime - release);
+  gain.gain.exponentialRampToValueAtTime(0.001, endTime);
+  if (vibrato) {
+    const lfo = audioContext.createOscillator();
+    const lfoGain = audioContext.createGain();
+    lfo.frequency.value = vibrato.rate;
+    lfoGain.gain.value = vibrato.depth;
+    lfo.connect(lfoGain);
+    lfoGain.connect(oscillator.frequency);
+    lfo.start(startTime);
+    lfo.stop(endTime);
+  }
+  oscillator.start(startTime);
+  oscillator.stop(endTime);
+}
+
+function scheduleNoise(audioContext, { startTime, duration, peakGain, filter }) {
+  const buffer = audioContext.createBuffer(1, Math.ceil(audioContext.sampleRate * duration), audioContext.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i += 1) data[i] = Math.random() * 2 - 1;
+  const source = audioContext.createBufferSource();
+  source.buffer = buffer;
+  const biquad = audioContext.createBiquadFilter();
+  biquad.type = filter.type;
+  biquad.frequency.value = filter.frequency;
+  biquad.Q.value = filter.Q ?? 1;
+  const gain = audioContext.createGain();
+  source.connect(biquad);
+  biquad.connect(gain);
+  gain.connect(audioContext.destination);
+  gain.gain.setValueAtTime(peakGain, startTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+  source.start(startTime);
+  source.stop(startTime + duration);
+}
+
 // keys must match the ids in ALARM_TYPES in constants.js
 const ALARM_PATTERNS = {
   beep(audioContext, peakGain) {
@@ -62,6 +118,24 @@ const ALARM_PATTERNS = {
     const now = audioContext.currentTime;
     scheduleSweep(audioContext, { startFrequency: 440, endFrequency: 880, type: "sawtooth", startTime: now, duration: 0.3, peakGain: peakGain * 0.6 });
     scheduleSweep(audioContext, { startFrequency: 880, endFrequency: 440, type: "sawtooth", startTime: now + 0.3, duration: 0.3, peakGain: peakGain * 0.6 });
+  },
+  whistle(audioContext, peakGain) {
+    // Referee whistle "삐이익": one long blast of a high sine whose fast,
+    // deep vibrato is the rattling pea inside the whistle, over a little
+    // breathy noise.
+    const now = audioContext.currentTime;
+    const duration = 0.6;
+    scheduleVoice(audioContext, {
+      type: "sine",
+      frequencies: [[0, 2600], [0.03, 2800]],
+      startTime: now,
+      duration,
+      peakGain: peakGain * 0.6,
+      attack: 0.01,
+      release: 0.04,
+      vibrato: { rate: 32, depth: 90 },
+    });
+    scheduleNoise(audioContext, { startTime: now, duration, peakGain: peakGain * 0.12, filter: { type: "bandpass", frequency: 2800, Q: 3 } });
   },
 };
 

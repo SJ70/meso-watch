@@ -1,15 +1,24 @@
 const ICON_NAMES = [
   "alarm-clock-plus",
+  "bell",
+  "bell-check",
+  "chart-no-axes-column-increasing",
   "chevron-down",
+  "map-pin",
   "pause",
   "play",
   "rotate-ccw-clock",
   "settings",
+  "siren",
   "square",
   "square-arrow-down",
   "square-arrow-left",
   "square-dashed-top-solid",
   "trash",
+  "triangle-alert",
+  "volume-1",
+  "volume-2",
+  "whistle",
   "x"
 ];
 
