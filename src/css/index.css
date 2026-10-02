@@ -484,7 +484,7 @@ h1 {
   position: absolute;
   right: -30px;
   bottom: 12px;
-  color: var(--muted);
+  color: var(--ink);
   font-family: serif;
   font-weight: 800;
   font-size: 1rem;
