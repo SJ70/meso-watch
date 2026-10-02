@@ -1,3 +1,4 @@
+import { createIconElement } from "../svg/icons.js";
 import { TIMER_COLORS, DEFAULT_TIMER_COLOR } from "./constants.js";
 
 const HEX_COLOR = /^#[0-9a-f]{6}$/i;
@@ -104,6 +105,7 @@ export function setupTimerColorSetting(container, onSelect, onToggle) {
   const hexInput = root.querySelector(".color-picker-hex");
   const state = { h: 0, s: 0, v: 0, hex: null };
   pickerStates.set(root, state);
+  root.querySelector(".color-warning").prepend(createIconElement("triangle-alert", { width: 14, height: 14 }));
 
   const emit = () => {
     state.hex = hsvToHex(state);

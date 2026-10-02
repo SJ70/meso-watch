@@ -531,7 +531,7 @@ h1 {
 
 .name-input:focus {
   border-color: var(--accent);
-  outline: 3px solid rgba(232, 93, 63, 0.2);
+  outline: 3px solid color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 .duration-setting {
@@ -563,7 +563,7 @@ h1 {
 
 .duration-fields:focus-within {
   border-color: var(--accent);
-  outline: 3px solid rgba(232, 93, 63, 0.2);
+  outline: 3px solid color-mix(in srgb, var(--accent) 20%, transparent);
 }
 
 /* Spans the wheel's 3 rows (aligned to the bottom of the column, under the
@@ -730,7 +730,7 @@ h1 {
 
 .shortcut-input.is-setting-shortcut {
   border-color: var(--accent);
-  outline: 3px solid rgba(232, 93, 63, 0.2);
+  outline: 3px solid color-mix(in srgb, var(--accent) 20%, transparent);
   color: var(--accent);
 }
 
@@ -757,15 +757,28 @@ h1 {
   right: 14px;
   left: 14px;
   z-index: 5;
+  /* Dark like the dropdown list, not yellow: it appears precisely when the
+     palette under it is bright, where a yellow bubble would blend in. The
+     amber icon carries the "warning" meaning instead. */
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
   padding: 6px 8px;
-  color: #1a1206;
-  background: #f2c14e;
+  color: var(--ink);
+  background: #303b47;
+  border: 1px solid var(--line);
   border-radius: 4px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   font-weight: 700;
   font-size: 0.66rem;
   line-height: 1.35;
   pointer-events: none;
+}
+
+.color-warning > svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: #f2c14e;
 }
 
 .color-warning[hidden] {
@@ -954,7 +967,7 @@ button {
   transition: transform 160ms ease, background 160ms ease, color 160ms ease;
 }
 
-button:focus-visible { outline: 3px solid rgba(232, 93, 63, 0.35); outline-offset: 3px; }
+button:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 35%, transparent); outline-offset: 3px; }
 
 button:disabled {
   cursor: not-allowed;

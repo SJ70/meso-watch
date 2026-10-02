@@ -792,6 +792,11 @@ function renderTimer(timer, target = timerList) {
   function updateTimerColorSettingUi() {
     const progressStyle = PROGRESS_STYLES.find((item) => item.id === draft.progressStyle) ?? PROGRESS_STYLES[0];
     updateTimerColorSetting(element, draft.color, { warnBrightColor: progressStyle.warnBrightColor });
+    // This timer's settings dialog is themed with its own color instead of
+    // the app accent, following the color being picked live. (The default
+    // timer color equals --accent, so untouched timers look the same.)
+    settingsModal.style.setProperty("--accent", draft.color);
+    settingsModal.style.setProperty("--accent-dark", `color-mix(in srgb, ${draft.color} 78%, #000)`);
   }
   function resetDraftFromTimer() {
     draft = { name: timer.name, totalMs: timer.totalMs, shortcut: timer.shortcut, icon: timer.icon, volume: timer.volume, alarmType: timer.alarmType, alarmRepeatCount: timer.alarmRepeatCount, alarmRepeatUnlimited: timer.alarmRepeatUnlimited, autoRestart: timer.autoRestart, restartDelay: timer.restartDelay, progressStyle: timer.progressStyle, color: timer.color };

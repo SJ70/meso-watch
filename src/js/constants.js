@@ -71,7 +71,7 @@ export const DEFAULT_PROGRESS_STYLE = PROGRESS_STYLES[0].id;
 
 // Seeded once for a fresh install (see meso-watch-defaults-seeded in app.js).
 // Preset swatches for a timer's color (progress ring/gauge + start button).
-// The first one matches --accent in color.css, the default.
+// The first one is the default and must stay equal to --accent in color.css.
 export const TIMER_COLORS = [
   { value: "#e85d3f", label: "주황" },
   { value: "#e8b03f", label: "노랑" },
