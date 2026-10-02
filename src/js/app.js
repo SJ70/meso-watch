@@ -6,7 +6,7 @@ import {
   DEFAULT_MASTER_VOLUME,
   DEFAULT_TIMER_VOLUME,
   DEFAULT_TIMER_MINUTES,
-  MAX_DURATION_HOURS,
+  MAX_DURATION_MINUTES,
   DEFAULT_TIMERS_PER_ROW,
   DEFAULT_UI_ZOOM,
   MIN_UI_ZOOM,
@@ -341,17 +341,19 @@ function saveShortcuts() {
 
 // mm:ss, growing to h:mm:ss only once a timer is an hour or longer.
 function formatTime(seconds) {
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60).toString().padStart(2, "0");
+  const minutes = Math.floor(seconds / 60).toString().padStart(2, "0");
   const remainingSeconds = (seconds % 60).toString().padStart(2, "0");
-  return hours > 0 ? `${hours}:${minutes}:${remainingSeconds}` : `${minutes}:${remainingSeconds}`;
+  return `${minutes}:${remainingSeconds}`;
 }
 
-// Hours/minutes/seconds columns of the duration picker in the settings modal.
+// Columns of the duration picker in the settings modal (mm:ss.cc, 10ms
+// steps). separator is what's drawn before the column. hideLabel drops the
+// visible unit label (the "." already reads as a fraction, stopwatch-style);
+// label is still used as the input's aria-label.
 const DURATION_UNITS = [
-  { unit: "hours", label: "시간", max: MAX_DURATION_HOURS, fromMs: (ms) => Math.floor(ms / 3600000) },
-  { unit: "minutes", label: "분", max: 59, fromMs: (ms) => Math.floor(ms / 60000) % 60 },
-  { unit: "seconds", label: "초", max: 59, fromMs: (ms) => Math.floor(ms / 1000) % 60 },
+  { unit: "minutes", label: "분", max: MAX_DURATION_MINUTES, fromMs: (ms) => Math.floor(ms / 60000) },
+  { unit: "seconds", label: "초", max: 59, separator: ":", fromMs: (ms) => Math.floor(ms / 1000) % 60 },
+  { unit: "centiseconds", label: "1/100초", hideLabel: true, max: 99, separator: ".", fromMs: (ms) => Math.floor(ms / 10) % 100 },
 ];
 
 // The settings modal's main page only edits the name and shortcut directly;
@@ -376,10 +378,10 @@ function settingsSubpageFooterMarkup() {
         </div>`;
 }
 
-// Like formatTime, but keeps a fractional second (the 7.5초 preset).
+// Like formatTime, but keeps any fraction of a second (e.g. the 7.5초 preset).
 function formatDurationPreview(ms) {
-  const tenths = Math.floor((ms % 1000) / 100);
-  return `${formatTime(Math.floor(ms / 1000))}${tenths ? `.${tenths}` : ""}`;
+  const centiseconds = Math.floor((ms % 1000) / 10);
+  return `${formatTime(Math.floor(ms / 1000))}${centiseconds ? `.${String(centiseconds).padStart(2, "0")}` : ""}`;
 }
 
 function formatMs(ms) {
@@ -649,9 +651,9 @@ function renderTimer(timer, target = timerList) {
         <div class="duration-setting">
           <span class="control-label">시간</span>
           <div class="duration-fields" aria-label="타이머 ${timer.id} 시간 입력">
-            ${DURATION_UNITS.map(({ unit, label }, index) => `${index > 0 ? '<span class="duration-separator" aria-hidden="true">:</span>' : ""}
+            ${DURATION_UNITS.map(({ unit, label, hideLabel, separator }) => `${separator ? `<span class="duration-separator" aria-hidden="true">${separator}</span>` : ""}
             <div class="duration-column">
-              <span class="duration-wheel-label" aria-hidden="true">${label}</span>
+              ${hideLabel ? "" : `<span class="duration-wheel-label" aria-hidden="true">${label}</span>`}
               <div class="duration-wheel" data-unit="${unit}">
                 <div class="duration-wheel-track">
                   <span class="duration-wheel-value" data-offset="-2" aria-hidden="true"></span>
@@ -1066,11 +1068,12 @@ function renderTimer(timer, target = timerList) {
   function setDurationWheels(ms) {
     durationWheels.forEach((unitInfo) => setDurationWheel(unitInfo, unitInfo.fromMs(ms)));
   }
-  // Rebuilds draft.totalMs from the columns. A 0:00:00 total isn't a usable
-  // timer, so it's bumped to 1 second.
+  // Rebuilds draft.totalMs from the columns (at most 60:59.99). A zero total
+  // isn't a usable timer, so it's bumped to 1 second.
   function commitDurationWheels() {
-    const [hours, minutes, seconds] = durationWheels.map(({ input, max }) => Math.min(max, Math.max(0, Number(input.value) || 0)));
-    draft.totalMs = Math.max(1, hours * 3600 + minutes * 60 + seconds) * 1000;
+    const [minutes, seconds, centiseconds] = durationWheels.map(({ input, max }) => Math.min(max, Math.max(0, Number(input.value) || 0)));
+    const totalMs = minutes * 60000 + seconds * 1000 + centiseconds * 10;
+    draft.totalMs = totalMs || 1000;
     setDurationWheels(draft.totalMs);
   }
   function stepDurationWheel(unitInfo, delta) {
