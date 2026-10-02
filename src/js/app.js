@@ -1,6 +1,7 @@
 import { createIconElement } from "../svg/icons.js";
 import {
   NO_ICON,
+  PROGRESS_STYLES,
   TIMER_ICON_NAMES,
   DEFAULT_MASTER_VOLUME,
   DEFAULT_TIMER_VOLUME,
@@ -29,7 +30,7 @@ import { openDialog, registerDialogShrinkOnClose } from "./dialog-utils.js";
 import { previewAlarmSound, effectiveVolume, notifyDone, stopAlarm } from "./sound.js";
 import { formatShortcut, NORMALIZE_MODIFIER_CODE } from "./shortcuts.js";
 import { checkForUpdate } from "./updateCheck.js";
-import { configureWindowSizeState, syncWindowToContent } from "./windowSize.js";
+import { configureWindowSizeState, syncWindowToContent, syncWindowToDialog } from "./windowSize.js";
 
 const timerList = document.getElementById("timerList");
 const addTimerButton = document.getElementById("addTimerButton");
@@ -353,6 +354,34 @@ const DURATION_UNITS = [
   { unit: "seconds", label: "초", max: 59, fromMs: (ms) => Math.floor(ms / 1000) % 60 },
 ];
 
+// The settings modal's main page only edits the name and shortcut directly;
+// these groups each get their own page, previewed by a row on the main page.
+const SETTINGS_SUBPAGES = [
+  { page: "time", title: "시간" },
+  { page: "alarm", title: "알람" },
+  { page: "appearance", title: "외형" },
+];
+
+function settingsSubpageHeaderMarkup(page) {
+  const { title } = SETTINGS_SUBPAGES.find((subpage) => subpage.page === page);
+  return `<div class="settings-modal-header">
+          <button class="settings-back" type="button" aria-label="뒤로"></button>
+          <span class="section-title">${title} 설정</span>
+        </div>`;
+}
+
+function settingsSubpageFooterMarkup() {
+  return `<div class="settings-actions">
+          <button class="primary settings-back-confirm" type="button">확인</button>
+        </div>`;
+}
+
+// Like formatTime, but keeps a fractional second (the 7.5초 preset).
+function formatDurationPreview(ms) {
+  const tenths = Math.floor((ms % 1000) / 100);
+  return `${formatTime(Math.floor(ms / 1000))}${tenths ? `.${tenths}` : ""}`;
+}
+
 function formatMs(ms) {
   return Math.floor((((ms % 1000) + 1000) % 1000) / 10).toString().padStart(2, "0");
 }
@@ -589,103 +618,126 @@ function renderTimer(timer, target = timerList) {
       </div>
     </section>
     <dialog class="settings-modal" aria-label="타이머 설정">
-      <div class="settings-modal-header">
-        <span class="section-title">타이머 설정</span>
-      </div>
-      <label class="name-field">
-        <span class="control-label">이름</span>
-        <input class="name-input" type="text" maxlength="30" value="${escapeHtml(timer.name)}" aria-label="타이머 이름" />
-      </label>
-      <div class="duration-setting">
-        <span class="control-label">시간</span>
-        <div class="duration-fields" aria-label="타이머 ${timer.id} 시간 입력">
-          ${DURATION_UNITS.map(({ unit, label }, index) => `${index > 0 ? '<span class="duration-separator" aria-hidden="true">:</span>' : ""}
-          <div class="duration-column">
-            <span class="duration-wheel-label" aria-hidden="true">${label}</span>
-            <div class="duration-wheel" data-unit="${unit}">
-              <div class="duration-wheel-track">
-                <span class="duration-wheel-value" data-offset="-2" aria-hidden="true"></span>
-                <button class="duration-wheel-value duration-wheel-step" data-offset="-1" type="button" tabindex="-1" aria-hidden="true"></button>
-                <input class="duration-input" type="text" inputmode="numeric" pattern="[0-9]*" aria-label="타이머 ${timer.id} ${label}" />
-                <button class="duration-wheel-value duration-wheel-step" data-offset="1" type="button" tabindex="-1" aria-hidden="true"></button>
-                <span class="duration-wheel-value" data-offset="2" aria-hidden="true"></span>
-              </div>
-            </div>
+      <div class="settings-page" data-page="main">
+        <div class="settings-modal-header">
+          <span class="section-title">타이머 설정</span>
+        </div>
+        <label class="name-field">
+          <span class="control-label">이름</span>
+          <input class="name-input" type="text" maxlength="30" value="${escapeHtml(timer.name)}" aria-label="타이머 이름" />
+        </label>
+        <div class="settings-nav" role="group" aria-label="타이머 ${timer.id} 세부 설정">
+          ${SETTINGS_SUBPAGES.map(({ page, title }) => `
+          <div class="settings-nav-item">
+            <span class="control-label">${title}</span>
+            <button class="settings-nav-row" type="button" data-target-page="${page}" aria-label="${title} 설정">
+              <span class="settings-nav-preview" data-preview="${page}"></span>
+            </button>
           </div>`).join("")}
         </div>
-        <div class="duration-presets" role="group" aria-label="타이머 ${timer.id} 시간 프리셋">
-          <button class="duration-preset" type="button" data-ms="7500">7.5초</button>
-          <button class="duration-preset" type="button" data-ms="30000">30초</button>
-          <button class="duration-preset" type="button" data-ms="60000">1분</button>
-          <button class="duration-preset" type="button" data-ms="120000">2분</button>
-          <button class="duration-preset" type="button" data-ms="600000">10분</button>
-          <button class="duration-preset" type="button" data-ms="900000">15분</button>
-          <button class="duration-preset" type="button" data-ms="1800000">30분</button>
+        <div class="shortcut-setting timer-shortcut-setting">
+          <span class="control-label">재시작 단축키</span>
+          <input class="shortcut-input shortcut-button" type="text" readonly autocomplete="off" aria-label="타이머 ${timer.id} 단축키 설정" value="${escapeHtml(formatShortcut(timer.shortcut))}" />
+        </div>
+        <div class="settings-actions">
+          <button class="secondary modal-close" type="button">취소</button>
+          <button class="primary modal-save" type="button">${timer.isDraft ? "완료" : "저장"}</button>
         </div>
       </div>
-      ${progressStyleSettingMarkup(timer)}
-      <div class="auto-restart-setting toggle-setting">
-        <div class="opacity-setting-header">
-          <span class="control-label">타이머 자동 재시작</span>
-          <label class="toggle-switch">
-            <input class="auto-restart-checkbox" type="checkbox"${timer.autoRestart ? " checked" : ""} aria-label="타이머 ${timer.id} 자동 재시작" />
-            <span class="toggle-track"><span class="toggle-thumb"></span></span>
-          </label>
+      <div class="settings-page" data-page="time" hidden>
+        ${settingsSubpageHeaderMarkup("time")}
+        <div class="duration-setting">
+          <span class="control-label">시간</span>
+          <div class="duration-fields" aria-label="타이머 ${timer.id} 시간 입력">
+            ${DURATION_UNITS.map(({ unit, label }, index) => `${index > 0 ? '<span class="duration-separator" aria-hidden="true">:</span>' : ""}
+            <div class="duration-column">
+              <span class="duration-wheel-label" aria-hidden="true">${label}</span>
+              <div class="duration-wheel" data-unit="${unit}">
+                <div class="duration-wheel-track">
+                  <span class="duration-wheel-value" data-offset="-2" aria-hidden="true"></span>
+                  <button class="duration-wheel-value duration-wheel-step" data-offset="-1" type="button" tabindex="-1" aria-hidden="true"></button>
+                  <input class="duration-input" type="text" inputmode="numeric" pattern="[0-9]*" aria-label="타이머 ${timer.id} ${label}" />
+                  <button class="duration-wheel-value duration-wheel-step" data-offset="1" type="button" tabindex="-1" aria-hidden="true"></button>
+                  <span class="duration-wheel-value" data-offset="2" aria-hidden="true"></span>
+                </div>
+              </div>
+            </div>`).join("")}
+          </div>
+          <div class="duration-presets" role="group" aria-label="타이머 ${timer.id} 시간 프리셋">
+            <button class="duration-preset" type="button" data-ms="7500">7.5초</button>
+            <button class="duration-preset" type="button" data-ms="30000">30초</button>
+            <button class="duration-preset" type="button" data-ms="60000">1분</button>
+            <button class="duration-preset" type="button" data-ms="120000">2분</button>
+            <button class="duration-preset" type="button" data-ms="600000">10분</button>
+            <button class="duration-preset" type="button" data-ms="900000">15분</button>
+            <button class="duration-preset" type="button" data-ms="1800000">30분</button>
+          </div>
         </div>
-      </div>
-      <div class="opacity-setting restart-delay-setting">
-        <div class="opacity-setting-header">
-          <span class="control-label">재시작 지연 시간</span>
-          <span class="setting-value restart-delay-value"></span>
+        <div class="auto-restart-setting toggle-setting">
+          <div class="opacity-setting-header">
+            <span class="control-label">타이머 자동 재시작</span>
+            <label class="toggle-switch">
+              <input class="auto-restart-checkbox" type="checkbox"${timer.autoRestart ? " checked" : ""} aria-label="타이머 ${timer.id} 자동 재시작" />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
+          </div>
         </div>
-        <input class="opacity-slider restart-delay-slider" type="range" min="${MIN_RESTART_DELAY}" max="${MAX_RESTART_DELAY}" step="${RESTART_DELAY_STEP}" aria-label="타이머 ${timer.id} 재시작 지연 시간" />
-      </div>
-      <div class="alarm-type-setting">
-        <span class="control-label">알람음</span>
-        ${iconSelectMarkup({ triggerClass: "alarm-type-select", ariaLabel: `타이머 ${timer.id} 알람음`, items: ALARM_TYPES })}
-      </div>
-      <div class="opacity-setting volume-setting">
-        <div class="opacity-setting-header">
-          <span class="control-label">알람 볼륨</span>
-          <span class="setting-value volume-value"></span>
+        <div class="opacity-setting restart-delay-setting">
+          <div class="opacity-setting-header">
+            <span class="control-label">재시작 지연 시간</span>
+            <span class="setting-value restart-delay-value"></span>
+          </div>
+          <input class="opacity-slider restart-delay-slider" type="range" min="${MIN_RESTART_DELAY}" max="${MAX_RESTART_DELAY}" step="${RESTART_DELAY_STEP}" aria-label="타이머 ${timer.id} 재시작 지연 시간" />
         </div>
-        <input class="opacity-slider volume-slider-input" type="range" min="0" max="100" step="1" aria-label="타이머 ${timer.id} 음량" />
+        ${settingsSubpageFooterMarkup()}
       </div>
-      <div class="alarm-repeat-setting">
-        <div class="opacity-setting-header">
-          <span class="control-label">알람 반복 횟수</span>
-          <span class="setting-value alarm-repeat-count-value"></span>
+      <div class="settings-page" data-page="alarm" hidden>
+        ${settingsSubpageHeaderMarkup("alarm")}
+        <div class="alarm-type-setting">
+          <span class="control-label">알람음</span>
+          ${iconSelectMarkup({ triggerClass: "alarm-type-select", ariaLabel: `타이머 ${timer.id} 알람음`, items: ALARM_TYPES })}
         </div>
-        <input class="opacity-slider alarm-repeat-count-slider" type="range" min="${MIN_ALARM_REPEAT_COUNT}" max="${MAX_ALARM_REPEAT_COUNT}" step="1" aria-label="타이머 ${timer.id} 알람 반복 횟수"${timer.alarmRepeatUnlimited ? " disabled" : ""} />
-      </div>
-      <div class="alarm-repeat-unlimited-setting toggle-setting">
-        <div class="opacity-setting-header">
-          <span class="control-label">알람 반복 무제한</span>
-          <label class="toggle-switch">
-            <input class="alarm-repeat-unlimited-checkbox" type="checkbox"${timer.alarmRepeatUnlimited ? " checked" : ""} aria-label="타이머 ${timer.id} 알람 반복 무제한" />
-            <span class="toggle-track"><span class="toggle-thumb"></span></span>
-          </label>
+        <div class="opacity-setting volume-setting">
+          <div class="opacity-setting-header">
+            <span class="control-label">알람 볼륨</span>
+            <span class="setting-value volume-value"></span>
+          </div>
+          <input class="opacity-slider volume-slider-input" type="range" min="0" max="100" step="1" aria-label="타이머 ${timer.id} 음량" />
         </div>
-      </div>
-      <div class="icon-setting">
-        <span class="control-label">아이콘</span>
-        <div class="icon-options" role="group" aria-label="타이머 ${timer.id} 아이콘 선택">
-          ${TIMER_ICON_NAMES.map((name) => name === NO_ICON ? `
-            <button class="icon-option icon-option-none${name === timer.icon ? " is-selected" : ""}" type="button" data-icon="${name}" aria-label="아이콘 없음">없음</button>
-          ` : `
-            <button class="icon-option${name === timer.icon ? " is-selected" : ""}" type="button" data-icon="${name}" aria-label="${name.replace(/\.(png|webp)$/, "")} 아이콘">
-              <img src="../public/icons/${name}" alt="" />
-            </button>
-          `).join("")}
+        <div class="alarm-repeat-setting">
+          <div class="opacity-setting-header">
+            <span class="control-label">알람 반복 횟수</span>
+            <span class="setting-value alarm-repeat-count-value"></span>
+          </div>
+          <input class="opacity-slider alarm-repeat-count-slider" type="range" min="${MIN_ALARM_REPEAT_COUNT}" max="${MAX_ALARM_REPEAT_COUNT}" step="1" aria-label="타이머 ${timer.id} 알람 반복 횟수"${timer.alarmRepeatUnlimited ? " disabled" : ""} />
         </div>
+        <div class="alarm-repeat-unlimited-setting toggle-setting">
+          <div class="opacity-setting-header">
+            <span class="control-label">알람 반복 무제한</span>
+            <label class="toggle-switch">
+              <input class="alarm-repeat-unlimited-checkbox" type="checkbox"${timer.alarmRepeatUnlimited ? " checked" : ""} aria-label="타이머 ${timer.id} 알람 반복 무제한" />
+              <span class="toggle-track"><span class="toggle-thumb"></span></span>
+            </label>
+          </div>
+        </div>
+        ${settingsSubpageFooterMarkup()}
       </div>
-      <div class="shortcut-setting timer-shortcut-setting">
-        <span class="control-label">재시작 단축키</span>
-        <input class="shortcut-input shortcut-button" type="text" readonly autocomplete="off" aria-label="타이머 ${timer.id} 단축키 설정" value="${escapeHtml(formatShortcut(timer.shortcut))}" />
-      </div>
-      <div class="settings-actions">
-        <button class="secondary modal-close" type="button">취소</button>
-        <button class="primary modal-save" type="button">${timer.isDraft ? "완료" : "저장"}</button>
+      <div class="settings-page" data-page="appearance" hidden>
+        ${settingsSubpageHeaderMarkup("appearance")}
+        ${progressStyleSettingMarkup(timer)}
+        <div class="icon-setting">
+          <span class="control-label">아이콘</span>
+          <div class="icon-options" role="group" aria-label="타이머 ${timer.id} 아이콘 선택">
+            ${TIMER_ICON_NAMES.map((name) => name === NO_ICON ? `
+              <button class="icon-option icon-option-none${name === timer.icon ? " is-selected" : ""}" type="button" data-icon="${name}" aria-label="아이콘 없음">없음</button>
+            ` : `
+              <button class="icon-option${name === timer.icon ? " is-selected" : ""}" type="button" data-icon="${name}" aria-label="${name.replace(/\.(png|webp)$/, "")} 아이콘">
+                <img src="../public/icons/${name}" alt="" />
+              </button>
+            `).join("")}
+          </div>
+        </div>
+        ${settingsSubpageFooterMarkup()}
       </div>
     </dialog>`;
 
@@ -739,12 +791,11 @@ function renderTimer(timer, target = timerList) {
     element.querySelector(".shortcut-button").value = formatShortcut(timer.shortcut);
     updateIconOptionsUi();
     updateVolumeSettingUi();
-    alarmTypeSelect.close();
     updateAlarmTypeSettingUi();
     updateAlarmRepeatSettingUi();
     updateAutoRestartSettingUi();
-    progressStyleSelect.close();
     updateProgressStyleSettingUi();
+    showSettingsPage("main");
   }
   element.querySelectorAll(".icon-option").forEach((button) => button.addEventListener("click", () => {
     draft.icon = button.dataset.icon;
@@ -902,6 +953,11 @@ function renderTimer(timer, target = timerList) {
     settingsModal.close();
   });
   settingsModal.addEventListener("cancel", (event) => {
+    if (currentSettingsPage !== "main") {
+      event.preventDefault();
+      navigateSettings("main");
+      return;
+    }
     cancelShortcutRecording();
     resetDraftFromTimer();
     if (timer.isDraft) {
@@ -930,12 +986,67 @@ function renderTimer(timer, target = timerList) {
     // Commit whatever's still in the focused field before saving - typing
     // Enter doesn't itself fire "change" the way blurring the field would.
     if (target.matches(".duration-input, .name-input")) target.dispatchEvent(new Event("change"));
-    element.querySelector(".modal-save").click();
+    if (currentSettingsPage !== "main") navigateSettings("main");
+    else element.querySelector(".modal-save").click();
   });
   element.querySelector(".name-input").addEventListener("change", (event) => {
     draft.name = event.target.value.trim() || defaultTimerName(timer);
     event.target.value = draft.name;
   });
+  // Which page of the settings modal is showing (see SETTINGS_SUBPAGES).
+  // Sub-page edits only touch the draft, so leaving a sub-page keeps them
+  // until the main page's 저장/취소.
+  let currentSettingsPage = "main";
+  function showSettingsPage(page) {
+    currentSettingsPage = page;
+    alarmTypeSelect.close();
+    progressStyleSelect.close();
+    element.querySelectorAll(".settings-page").forEach((settingsPage) => {
+      settingsPage.hidden = settingsPage.dataset.page !== page;
+    });
+    if (page === "main") updateSettingsPreviews();
+  }
+  // showSettingsPage plus what a user-driven page change needs: refit the
+  // window to the new page's height and move focus onto the new page.
+  function navigateSettings(page) {
+    const fromPage = currentSettingsPage;
+    showSettingsPage(page);
+    syncWindowToDialog(settingsModal);
+    const focusTarget = page === "main"
+      ? element.querySelector(`.settings-nav-row[data-target-page="${fromPage}"]`)
+      : element.querySelector(`.settings-page[data-page="${page}"] .settings-back`);
+    focusTarget?.focus();
+  }
+  const previewIcon = (name) => createIconElement(name, { width: 14, height: 14 });
+  const previewText = (text) => document.createTextNode(text);
+  function updateSettingsPreviews() {
+    const preview = (page) => element.querySelector(`.settings-nav-preview[data-preview="${page}"]`);
+    // The restart delay applies to manual restarts too, so it's shown
+    // whether or not auto-restart is on.
+    const timeParts = [formatDurationPreview(draft.totalMs)];
+    if (draft.autoRestart) timeParts.push("자동 재시작");
+    if (draft.restartDelay) timeParts.push(`지연 ${draft.restartDelay}초`);
+    preview("time").replaceChildren(previewText(timeParts.join(" · ")));
+    const alarmType = ALARM_TYPES.find((item) => item.id === draft.alarmType) ?? ALARM_TYPES[0];
+    const repeatText = draft.alarmRepeatUnlimited ? "무제한" : `${draft.alarmRepeatCount}회`;
+    preview("alarm").replaceChildren(
+      ...(alarmType.icon ? [previewIcon(alarmType.icon)] : []),
+      previewText(`${alarmType.label} · ${draft.volume}% · ${repeatText}`),
+    );
+    const progressStyle = PROGRESS_STYLES.find((item) => item.id === draft.progressStyle) ?? PROGRESS_STYLES[0];
+    const timerIcon = draft.icon === NO_ICON ? null : Object.assign(document.createElement("img"), { src: `../public/icons/${draft.icon}`, alt: "" });
+    preview("appearance").replaceChildren(
+      previewIcon(progressStyle.icon),
+      previewText(`${progressStyle.label} · `),
+      timerIcon ?? previewText("아이콘 없음"),
+    );
+  }
+  element.querySelectorAll(".settings-nav-row").forEach((row) => {
+    row.appendChild(createIconElement("chevron-down", { width: 16, height: 16 }));
+    row.addEventListener("click", () => navigateSettings(row.dataset.targetPage));
+  });
+  element.querySelectorAll(".settings-back").forEach((button) => button.appendChild(createIconElement("chevron-down", { width: 16, height: 16 })));
+  element.querySelectorAll(".settings-back, .settings-back-confirm").forEach((button) => button.addEventListener("click", () => navigateSettings("main")));
   // Each picker column is a drum: the current value in an input (click to
   // type) with faded neighbours above/below. Wheel or clicking a neighbour
   // steps it with a short slide; dragging moves the track with the pointer

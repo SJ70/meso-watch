@@ -310,6 +310,83 @@ h1 {
   font-size: 0.92rem;
 }
 
+.settings-page[hidden] {
+  display: none;
+}
+
+/* Sub-page header's back arrow (a chevron-down turned to point left). */
+.settings-back {
+  display: inline-flex;
+  padding: 2px;
+  color: var(--ink);
+  background: transparent;
+}
+
+.settings-back > svg {
+  transform: rotate(90deg);
+}
+
+.settings-back:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Main-page rows that open a sub-page: a label above (like 이름 / 재시작
+   단축키) and a field-like button previewing the current values. */
+.settings-nav-item {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 10px;
+}
+
+.settings-nav-item .control-label {
+  margin-bottom: 0;
+}
+
+.settings-nav-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  text-align: left;
+}
+
+.settings-nav-row:hover {
+  border-color: var(--accent);
+}
+
+.settings-nav-preview {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 700;
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.settings-nav-preview svg {
+  flex: 0 0 auto;
+}
+
+.settings-nav-preview img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+/* Chevron pointing right. */
+.settings-nav-row > svg {
+  flex: 0 0 auto;
+  color: var(--muted);
+  transform: rotate(-90deg);
+}
+
 .confirm-message {
   margin: 0;
   color: var(--muted);
