@@ -27,8 +27,8 @@ import {
 import { iconSelectMarkup, setupIconSelect, updateIconSelect } from "./iconSelect.js";
 import { loadTimerProgressStyle, saveTimerProgressStyle, removeTimerProgressStyle, progressStyleSettingMarkup, setupProgressStyleSelect, updateProgressStyleSelect } from "./timerProgress.js";
 import { loadTimerColor, saveTimerColor, removeTimerColor, applyTimerColor, timerColorSettingMarkup, setupTimerColorSetting, updateTimerColorSetting } from "./timerColor.js";
-import { loadCustomSounds, getCustomSounds, addCustomSound, deleteCustomSound, MAX_CUSTOM_SOUND_BYTES } from "./customSounds.js";
-import { loadCustomImages, getCustomImages, getCustomImageUrl, addCustomImage, deleteCustomImage, isCustomImageId, MAX_CUSTOM_IMAGE_BYTES } from "./customImages.js";
+import { loadCustomSounds, getCustomSounds, addCustomSound, renameCustomSound, deleteCustomSound, MAX_CUSTOM_SOUND_BYTES } from "./customSounds.js";
+import { loadCustomImages, getCustomImages, getCustomImageUrl, addCustomImage, renameCustomImage, deleteCustomImage, isCustomImageId, MAX_CUSTOM_IMAGE_BYTES } from "./customImages.js";
 import { openDialog, registerDialogShrinkOnClose } from "./dialog-utils.js";
 import { previewAlarmSound, stopAlarmPreview, effectiveVolume, notifyDone, stopAlarm } from "./sound.js";
 import { formatShortcut, NORMALIZE_MODIFIER_CODE } from "./shortcuts.js";
@@ -265,6 +265,37 @@ function confirmAssetDelete({ title, message, note }) {
   });
 }
 
+// Asks for a new name for an uploaded file. Resolves the entered text on
+// 저장/Enter, null on 취소/Escape. Stacks over the settings dialog without
+// resizing the window, same as confirmAssetDelete.
+const assetRenameDialog = document.getElementById("assetRenameDialog");
+const assetRenameInput = document.getElementById("assetRenameInput");
+let resolveAssetRename = null;
+function settleAssetRename(value) {
+  resolveAssetRename?.(value);
+  resolveAssetRename = null;
+  if (assetRenameDialog.open) assetRenameDialog.close();
+}
+document.getElementById("assetRenameCancelButton").addEventListener("click", () => settleAssetRename(null));
+document.getElementById("assetRenameSaveButton").addEventListener("click", () => settleAssetRename(assetRenameInput.value));
+assetRenameInput.addEventListener("keydown", (event) => {
+  if (event.key !== "Enter") return;
+  event.preventDefault();
+  settleAssetRename(assetRenameInput.value);
+});
+assetRenameDialog.addEventListener("close", () => settleAssetRename(null));
+function promptAssetRename({ title, label }) {
+  settleAssetRename(null);
+  document.getElementById("assetRenameTitle").textContent = title;
+  assetRenameInput.value = label;
+  assetRenameDialog.showModal();
+  assetRenameInput.focus();
+  assetRenameInput.select();
+  return new Promise((resolve) => {
+    resolveAssetRename = resolve;
+  });
+}
+
 const updateDialog = document.getElementById("updateDialog");
 const updateLaterButton = document.getElementById("updateLaterButton");
 const updateDownloadButton = document.getElementById("updateDownloadButton");
@@ -480,19 +511,20 @@ function loadTimerIcon(id) {
 }
 
 // Background image choices: 없음, the bundled images, then the user's
-// uploaded ones (see customImages.js) with an × to delete them - all shown
+// uploaded ones (see customImages.js) with rename (pen) and delete (×)
+// buttons - all shown
 // as thumbnails (the bundled ones are pixel art, so kept crisp).
 function getTimerIconItems() {
   return [
     { id: NO_ICON, label: "없음" },
     ...TIMER_ICONS.map(({ file, label }) => ({ id: file, label, image: timerIconHref(file), pixelated: true })),
-    ...getCustomImages().map((image) => ({ id: image.id, label: image.label, image: image.url, removable: true })),
+    ...getCustomImages().map((image) => ({ id: image.id, label: image.label, image: image.url, renamable: true, removable: true })),
   ];
 }
 
 // The background image dropdown's last row: not an image, but uploads one.
 // The card shows it in a square box, so other shapes get letterboxed.
-const UPLOAD_IMAGE_ITEM = { id: "upload-image", label: "이미지 파일 업로드", icon: "file-up", action: true, hint: "1×1 비율 권장" };
+const UPLOAD_IMAGE_ITEM = { id: "upload-image", label: "이미지 파일 업로드", icon: "file-up", action: true, hint: "1:1 비율 권장" };
 const timerIconSelectItems = () => [...getTimerIconItems(), UPLOAD_IMAGE_ITEM];
 
 const CUSTOM_IMAGE_ERRORS = {
@@ -509,9 +541,10 @@ function loadTimerVolume(id) {
 }
 
 // Built-in alarm sounds followed by the user's registered ones (see
-// customSounds.js), which get a music-file icon and an × to delete them.
+// customSounds.js), which get a music-file icon plus rename (pen) and
+// delete (×) buttons.
 function getAlarmTypes() {
-  return [...ALARM_TYPES, ...getCustomSounds().map((sound) => ({ ...sound, icon: "file-music", removable: true }))];
+  return [...ALARM_TYPES, ...getCustomSounds().map((sound) => ({ id: sound.id, label: sound.label, icon: "file-music", renamable: true, removable: true }))];
 }
 
 // The alarm sound dropdown's last row: not a sound, but uploads one.
@@ -939,6 +972,7 @@ function renderTimer(timer, target = timerList) {
     previewAlarmSound(effectiveVolume(volume, draft.volume), draft.alarmType);
   }, {
     onAction: () => customSoundFileInput.click(),
+    onRename: (soundId) => renameUploadedSound(soundId),
     onRemove: (soundId) => removeCustomSound(soundId),
   });
   const timerIconSelect = setupIconSelect(element.querySelector(".icon-setting .icon-select"), element, timerIconSelectItems(), (icon) => {
@@ -946,6 +980,7 @@ function renderTimer(timer, target = timerList) {
     updateTimerIconSettingUi();
   }, {
     onAction: () => customImageFileInput.click(),
+    onRename: (imageId) => renameUploadedImage(imageId),
     onRemove: (imageId) => removeCustomImage(imageId),
   });
   // Rebuilds both upload-backed dropdowns after the uploaded files change; a
@@ -981,6 +1016,21 @@ function renderTimer(timer, target = timerList) {
       showUploadError(".custom-sound-error", CUSTOM_SOUND_ERRORS[error.message] ?? CUSTOM_SOUND_ERRORS["save-failed"]);
     }
   });
+  // The pen on a registered sound's row.
+  async function renameUploadedSound(soundId) {
+    const sound = getCustomSounds().find((item) => item.id === soundId);
+    if (!sound) return;
+    const label = await promptAssetRename({ title: "알람음 이름 변경", label: sound.label });
+    if (label === null) return;
+    showUploadError(".custom-sound-error", "");
+    try {
+      await renameCustomSound(sound.id, label);
+    } catch {
+      showUploadError(".custom-sound-error", "이름을 바꾸지 못했습니다.");
+      return;
+    }
+    refreshAssetSelects();
+  }
   // The × on a registered sound's row.
   async function removeCustomSound(soundId) {
     const sound = getCustomSounds().find((item) => item.id === soundId);
@@ -1016,6 +1066,21 @@ function renderTimer(timer, target = timerList) {
       showUploadError(".custom-image-error", CUSTOM_IMAGE_ERRORS[error.message] ?? CUSTOM_IMAGE_ERRORS["save-failed"]);
     }
   });
+  // The pen on an uploaded image's row.
+  async function renameUploadedImage(imageId) {
+    const image = getCustomImages().find((item) => item.id === imageId);
+    if (!image) return;
+    const label = await promptAssetRename({ title: "이미지 이름 변경", label: image.label });
+    if (label === null) return;
+    showUploadError(".custom-image-error", "");
+    try {
+      await renameCustomImage(image.id, label);
+    } catch {
+      showUploadError(".custom-image-error", "이름을 바꾸지 못했습니다.");
+      return;
+    }
+    refreshAssetSelects();
+  }
   // The × on an uploaded image's row.
   async function removeCustomImage(imageId) {
     const image = getCustomImages().find((item) => item.id === imageId);
@@ -1271,7 +1336,10 @@ function renderTimer(timer, target = timerList) {
     const repeatText = draft.alarmRepeatUnlimited ? "무제한" : `${draft.alarmRepeatCount}회`;
     preview("alarm").replaceChildren(
       ...(alarmType.icon ? [previewIcon(alarmType.icon)] : []),
-      previewText(`${alarmType.label} · ${draft.volume}% · ${repeatText}`),
+      // The sound's name (possibly a long uploaded file name) is the part
+      // that shrinks with "…"; volume/repeat always stay visible.
+      Object.assign(document.createElement("span"), { className: "settings-nav-preview-text", textContent: alarmType.label }),
+      previewText(` · ${draft.volume}% · ${repeatText}`),
     );
     const progressStyle = PROGRESS_STYLES.find((item) => item.id === draft.progressStyle) ?? PROGRESS_STYLES[0];
     const timerIconSrc = timerIconHref(draft.icon);

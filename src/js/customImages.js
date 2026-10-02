@@ -1,4 +1,4 @@
-import { withStore, createAssetId, assetLabelFromFile } from "./idbStore.js";
+import { withStore, updateRecord, createAssetId, assetLabelFromFile, MAX_ASSET_LABEL_LENGTH } from "./idbStore.js";
 
 // Background images the user uploads for timer cards, shared by all timers.
 // The files live in IndexedDB (too big for localStorage); each one gets an
@@ -59,6 +59,17 @@ export async function addCustomImage(file) {
   const image = { id, label, url: URL.createObjectURL(file) };
   images.push(image);
   return image;
+}
+
+// Renames an uploaded image (trimmed, capped); an empty name keeps the old
+// one. Returns the label actually saved.
+export async function renameCustomImage(id, label) {
+  const image = images.find((item) => item.id === id);
+  const newLabel = label.trim().slice(0, MAX_ASSET_LABEL_LENGTH);
+  if (!image || !newLabel || newLabel === image.label) return image?.label ?? null;
+  await updateRecord(DB_NAME, STORE_NAME, id, { label: newLabel });
+  image.label = newLabel;
+  return newLabel;
 }
 
 export async function deleteCustomImage(id) {

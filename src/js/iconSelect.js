@@ -1,14 +1,15 @@
 import { createIconElement } from "../svg/icons.js";
 
 // A native <select> can't render icons in its option list, so this is a
-// button + listbox dropdown instead. items are { id, label, icon?, action?,
-// removable? }:
+// button + listbox dropdown instead. items are { id, label, icon?, image?,
+// action?, renamable?, removable?, hint? }:
 // - icon: an svg name from src/svg/icons.js, or image: an image URL shown as
 //   a small thumbnail instead (pixelated: true to scale it nearest-neighbor,
 //   for pixel art); items with neither get an empty slot so labels still
 //   line up.
 // - action: not a value - clicking it calls onAction(id) instead of
 //   onSelect, and it's never shown as selected (e.g. "upload a sound").
+// - renamable: gets a pen button on the right that calls onRename(id).
 // - removable: gets an × button on the right that calls onRemove(id).
 // - hint: a short note shown dimmed at the right end of the row.
 // The options themselves are built by setupIconSelect (and rebuilt by its
@@ -30,8 +31,20 @@ function itemIcon(item) {
   return item.icon ? [createIconElement(item.icon, { width: 16, height: 16 })] : [];
 }
 
-// A row wraps the option button so a removable item's × can sit beside it
-// (a button can't be nested inside another button).
+// A small icon button beside an option (rename / remove).
+function createRowAction(item, { className, icon, label }) {
+  const button = document.createElement("button");
+  button.className = `icon-select-row-action ${className}`;
+  button.type = "button";
+  button.dataset.value = item.id;
+  button.setAttribute("aria-label", `${item.label} ${label}`);
+  button.title = label;
+  button.append(createIconElement(icon, { width: 14, height: 14 }));
+  return button;
+}
+
+// A row wraps the option button so an item's rename/remove buttons can sit
+// beside it (a button can't be nested inside another button).
 function createOptionRow(item) {
   const row = document.createElement("div");
   row.className = "icon-select-row";
@@ -58,16 +71,8 @@ function createOptionRow(item) {
     option.append(hint);
   }
   row.append(option);
-  if (item.removable) {
-    const remove = document.createElement("button");
-    remove.className = "icon-select-remove";
-    remove.type = "button";
-    remove.dataset.value = item.id;
-    remove.setAttribute("aria-label", `${item.label} 삭제`);
-    remove.title = "삭제";
-    remove.append(createIconElement("x", { width: 14, height: 14 }));
-    row.append(remove);
-  }
+  if (item.renamable) row.append(createRowAction(item, { className: "icon-select-rename", icon: "pen", label: "이름 변경" }));
+  if (item.removable) row.append(createRowAction(item, { className: "icon-select-remove", icon: "x", label: "삭제" }));
   return row;
 }
 
@@ -75,7 +80,7 @@ function createOptionRow(item) {
 // where any click outside root closes the list. Returns { close, setItems },
 // setItems swapping in a new option list (selection is then re-applied by
 // the caller via updateIconSelect).
-export function setupIconSelect(root, container, items, onSelect, { onAction, onRemove } = {}) {
+export function setupIconSelect(root, container, items, onSelect, { onAction, onRename, onRemove } = {}) {
   const trigger = root.querySelector(".icon-select-trigger");
   const optionList = root.querySelector(".icon-select-options");
   const getOptions = () => [...optionList.querySelectorAll(".icon-select-option")];
@@ -100,6 +105,11 @@ export function setupIconSelect(root, container, items, onSelect, { onAction, on
 
   trigger.addEventListener("click", () => setOpen(optionList.hidden));
   optionList.addEventListener("click", (event) => {
+    const rename = event.target.closest(".icon-select-rename");
+    if (rename) {
+      onRename?.(rename.dataset.value);
+      return;
+    }
     const remove = event.target.closest(".icon-select-remove");
     if (remove) {
       onRemove?.(remove.dataset.value);

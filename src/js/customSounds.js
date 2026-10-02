@@ -1,4 +1,4 @@
-import { withStore, createAssetId, assetLabelFromFile } from "./idbStore.js";
+import { withStore, updateRecord, createAssetId, assetLabelFromFile, MAX_ASSET_LABEL_LENGTH } from "./idbStore.js";
 
 // Alarm sounds the user registers from their own audio files, shared by all
 // timers. The files live in IndexedDB (audio is too big for localStorage);
@@ -77,6 +77,17 @@ export async function addCustomSound(file) {
   buffers.set(id, buffer);
   sounds.push({ id, label });
   return { id, label };
+}
+
+// Renames a registered sound (trimmed, capped); an empty name keeps the old
+// one. Returns the label actually saved.
+export async function renameCustomSound(id, label) {
+  const sound = sounds.find((item) => item.id === id);
+  const newLabel = label.trim().slice(0, MAX_ASSET_LABEL_LENGTH);
+  if (!sound || !newLabel || newLabel === sound.label) return sound?.label ?? null;
+  await updateRecord(DB_NAME, STORE_NAME, id, { label: newLabel });
+  sound.label = newLabel;
+  return newLabel;
 }
 
 export async function deleteCustomSound(id) {

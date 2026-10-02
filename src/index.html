@@ -88,6 +88,17 @@
     </div>
   </dialog>
 
+  <dialog class="settings-modal confirm-modal" id="assetRenameDialog" aria-label="이름 변경">
+    <div class="settings-modal-header">
+      <span class="section-title" id="assetRenameTitle"></span>
+    </div>
+    <input class="name-input" id="assetRenameInput" type="text" maxlength="50" autocomplete="off" aria-label="새 이름" />
+    <div class="settings-actions">
+      <button class="secondary" id="assetRenameCancelButton" type="button">취소</button>
+      <button class="primary" id="assetRenameSaveButton" type="button">저장</button>
+    </div>
+  </dialog>
+
   <dialog class="settings-modal confirm-modal" id="updateDialog" aria-label="업데이트 알림">
     <div class="settings-modal-header">
       <span class="section-title">업데이트 알림</span>

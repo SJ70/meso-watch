@@ -8,6 +8,7 @@ const ICON_NAMES = [
   "file-up",
   "map-pin",
   "pause",
+  "pen",
   "play",
   "rotate-ccw-clock",
   "settings",

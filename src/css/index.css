@@ -387,6 +387,14 @@ h1 {
   white-space: nowrap;
 }
 
+/* A preview part that may be too long (an uploaded sound's name): it alone
+   shrinks and ends in "…" when the row runs out of room. */
+.settings-nav-preview-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .settings-nav-preview svg {
   flex: 0 0 auto;
 }
@@ -410,6 +418,9 @@ h1 {
   font-weight: 700;
   font-size: 0.85rem;
   line-height: 1.4;
+  /* A long file name with no spaces (e.g. file_example_MP3_700KB) wraps
+     instead of overflowing the dialog. */
+  overflow-wrap: anywhere;
 }
 
 /* A secondary line under a confirm message (e.g. what deleting affects). */
@@ -1241,6 +1252,12 @@ button:disabled {
   left: 0;
   z-index: 10;
   display: grid;
+  /* One column exactly as wide as the list: without the 0 minimum, a long
+     (nowrap) label widens the column past the list, pushing each row's
+     rename/× buttons out of view behind a horizontal scrollbar instead of
+     the label ending in "…". */
+  grid-template-columns: minmax(0, 1fr);
+  overflow-x: hidden;
   /* Show 5.5 options so the half-cut 6th one hints there's more to scroll. */
   max-height: calc(var(--icon-select-option-height) * 5.5);
   overflow-y: auto;
@@ -1298,8 +1315,8 @@ button:disabled {
   color: var(--accent);
 }
 
-/* Each option sits in a row so a removable one (a registered alarm sound)
-   can have its × beside it. */
+/* Each option sits in a row so an uploaded one (alarm sound / background
+   image) can have its rename (pen) and × buttons beside it. */
 .icon-select-row {
   display: flex;
   align-items: center;
@@ -1324,6 +1341,7 @@ button:disabled {
   image-rendering: pixelated;
 }
 
+.icon-select-current-label,
 .icon-select-option-label {
   min-width: 0;
   overflow: hidden;
@@ -1331,7 +1349,7 @@ button:disabled {
   white-space: nowrap;
 }
 
-.icon-select-remove {
+.icon-select-row-action {
   display: inline-flex;
   flex: 0 0 auto;
   padding: 4px;
@@ -1340,8 +1358,8 @@ button:disabled {
   border-radius: 3px;
 }
 
-.icon-select-remove:hover,
-.icon-select-remove:focus-visible {
+.icon-select-row-action:hover,
+.icon-select-row-action:focus-visible {
   outline: none;
   color: var(--ink);
   background: rgba(255, 255, 255, 0.08);
