@@ -27,6 +27,9 @@ function createWindow() {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
       nodeIntegration: false,
+      // Keep timers firing on schedule while minimized/hidden - Chromium
+      // would otherwise clamp them to 1s (or 1min after a while).
+      backgroundThrottling: false,
     },
   });
 

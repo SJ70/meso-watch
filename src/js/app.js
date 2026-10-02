@@ -978,7 +978,8 @@ function tickTimer(timer) {
 // instead: it matches the display's own refresh rate rather than an
 // arbitrary fixed rate, is scheduled by the browser's own efficient timer
 // rather than a raw OS timer, and - unlike setInterval - is automatically
-// throttled or paused while the window is minimized or fully occluded.
+// throttled or paused while the window is minimized or fully occluded
+// (expiry while minimized is handled by scheduleExpiryWatchdog below).
 const runningTimers = new Set();
 let tickLoopHandle = null;
 
@@ -998,6 +999,26 @@ function runTickLoop(now) {
   tickLoopHandle = runningTimers.size > 0 ? requestAnimationFrame(runTickLoop) : null;
 }
 
+// rAF doesn't fire at all while the window is minimized, so on its own the
+// tick loop would freeze and a timer would never finish (no alarm) until the
+// window is restored. A single setTimeout aimed at the earliest end time
+// covers that: it wakes the CPU only once per expiry rather than per frame,
+// and while visible it's harmless since the rAF loop usually gets there first.
+let expiryWatchdogHandle = null;
+
+function scheduleExpiryWatchdog() {
+  clearTimeout(expiryWatchdogHandle);
+  expiryWatchdogHandle = null;
+  if (runningTimers.size === 0) return;
+  let earliestEnd = Infinity;
+  runningTimers.forEach((timer) => { earliestEnd = Math.min(earliestEnd, timer.endTimestamp); });
+  expiryWatchdogHandle = setTimeout(() => {
+    expiryWatchdogHandle = null;
+    runningTimers.forEach((timer) => tickTimer(timer));
+    scheduleExpiryWatchdog();
+  }, Math.max(0, earliestEnd - Date.now()));
+}
+
 function startTimer(timer) {
   if (timer.timerId || timer.remainingMs <= 0) return;
   timer.isFinished = false;
@@ -1005,12 +1026,14 @@ function startTimer(timer) {
   timer.timerId = true;
   runningTimers.add(timer);
   if (tickLoopHandle === null) tickLoopHandle = requestAnimationFrame(runTickLoop);
+  scheduleExpiryWatchdog();
   updateTimerElement(timer);
 }
 
 function stopTimer(timer) {
   runningTimers.delete(timer);
   timer.timerId = null;
+  scheduleExpiryWatchdog();
   updateTimerElement(timer);
 }
 
@@ -1040,6 +1063,7 @@ function adjustTimerDuration(timer, previousTotalMs) {
     // Still running - retarget the end time so the existing 10ms tick loop
     // picks up the rescaled remaining time.
     timer.endTimestamp = Date.now() + newRemainingMs;
+    scheduleExpiryWatchdog();
   }
   updateTimerElement(timer);
 }
