@@ -958,6 +958,11 @@ button:disabled {
   align-items: center;
 }
 
+/* A little extra room after the duration picker + presets above it. */
+.auto-restart-setting {
+  margin-top: 16px;
+}
+
 .toggle-setting .toggle-switch {
   margin-top: 0;
 }
