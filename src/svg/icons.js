@@ -4,6 +4,8 @@ const ICON_NAMES = [
   "bell-check",
   "chart-no-axes-column-increasing",
   "chevron-down",
+  "file-music",
+  "file-up",
   "map-pin",
   "pause",
   "play",

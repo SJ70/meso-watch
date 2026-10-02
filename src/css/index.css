@@ -173,11 +173,14 @@ h1 {
   cursor: grabbing;
 }
 
+/* z-index 1: above the progress ring/gauges (z-index 0, see
+   timer-progress.css) so a full gauge doesn't bury the icon, but still under
+   the card's content (also z-index 1, later in paint order). */
 .timer-card::before {
   content: "";
   position: absolute;
   inset: 0;
-  z-index: 0;
+  z-index: 1;
   border-radius: inherit;
   background-image: var(--timer-icon, none);
   background-repeat: no-repeat;
@@ -397,6 +400,13 @@ h1 {
   font-weight: 700;
   font-size: 0.85rem;
   line-height: 1.4;
+}
+
+/* A secondary line under a confirm message (e.g. what deleting affects). */
+.confirm-message.confirm-note {
+  margin-top: 4px;
+  opacity: 0.75;
+  font-size: 0.72rem;
 }
 
 .settings-actions {
@@ -687,6 +697,18 @@ h1 {
   color: var(--ink);
   background: #303b47;
   border-color: var(--accent);
+}
+
+/* Shown under the alarm sound dropdown when an upload/delete fails. */
+.custom-sound-error {
+  margin: 2px 0 0;
+  color: #f2c14e;
+  font-weight: 700;
+  font-size: 0.62rem;
+}
+
+.custom-sound-error[hidden] {
+  display: none;
 }
 
 .shortcut-setting {
@@ -1307,6 +1329,58 @@ button:disabled {
 
 .icon-select-option.is-selected {
   color: var(--accent);
+}
+
+/* Each option sits in a row so a removable one (a registered alarm sound)
+   can have its × beside it. */
+.icon-select-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.icon-select-row > .icon-select-option {
+  flex: 1;
+  min-width: 0;
+}
+
+.icon-select-option-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.icon-select-remove {
+  display: inline-flex;
+  flex: 0 0 auto;
+  padding: 4px;
+  color: var(--muted);
+  background: transparent;
+  border-radius: 3px;
+}
+
+.icon-select-remove:hover,
+.icon-select-remove:focus-visible {
+  outline: none;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* An action row (e.g. 소리 파일 업로드) is set apart from the values above it. */
+.icon-select-row:has(> .icon-select-option.is-action) {
+  margin-top: 3px;
+  padding-top: 3px;
+  border-top: 1px solid var(--line);
+}
+
+.icon-select-option.is-action {
+  color: var(--muted);
+}
+
+.icon-select-option.is-action:hover,
+.icon-select-option.is-action:focus-visible {
+  color: var(--ink);
 }
 
 .icon-select.is-open .icon-select-trigger {

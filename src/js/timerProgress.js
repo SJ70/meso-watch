@@ -20,7 +20,7 @@ export function progressStyleSettingMarkup(timer) {
   return `
       <div class="progress-style-setting">
         <span class="control-label">게이지 스타일</span>
-        ${iconSelectMarkup({ triggerClass: "progress-style-select", ariaLabel: `타이머 ${timer.id} 게이지 스타일`, items: PROGRESS_STYLES })}
+        ${iconSelectMarkup({ triggerClass: "progress-style-select", ariaLabel: `타이머 ${timer.id} 게이지 스타일` })}
       </div>`;
 }
 

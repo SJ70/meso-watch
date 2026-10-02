@@ -27,6 +27,7 @@ import {
 import { iconSelectMarkup, setupIconSelect, updateIconSelect } from "./iconSelect.js";
 import { loadTimerProgressStyle, saveTimerProgressStyle, removeTimerProgressStyle, progressStyleSettingMarkup, setupProgressStyleSelect, updateProgressStyleSelect } from "./timerProgress.js";
 import { loadTimerColor, saveTimerColor, removeTimerColor, applyTimerColor, timerColorSettingMarkup, setupTimerColorSetting, updateTimerColorSetting } from "./timerColor.js";
+import { loadCustomSounds, getCustomSounds, addCustomSound, deleteCustomSound, MAX_CUSTOM_SOUND_BYTES } from "./customSounds.js";
 import { openDialog, registerDialogShrinkOnClose } from "./dialog-utils.js";
 import { previewAlarmSound, effectiveVolume, notifyDone, stopAlarm } from "./sound.js";
 import { formatShortcut, NORMALIZE_MODIFIER_CODE } from "./shortcuts.js";
@@ -235,6 +236,31 @@ confirmDeleteButton.addEventListener("click", () => {
 confirmDialog.addEventListener("cancel", () => {
   pendingDeleteTimer = null;
 });
+
+// Confirms deleting a registered alarm sound. Resolves true on 삭제, false
+// on 취소/Escape. It's only ever opened from a timer's settings dialog, so it
+// stacks on top of that one without resizing the window (unlike openDialog /
+// registerDialogShrinkOnClose) - the window already fits the taller settings
+// dialog, and shrinking on close would cut that one off.
+const soundDeleteDialog = document.getElementById("soundDeleteDialog");
+const soundDeleteMessage = document.getElementById("soundDeleteMessage");
+let resolveSoundDelete = null;
+function settleSoundDelete(confirmed) {
+  resolveSoundDelete?.(confirmed);
+  resolveSoundDelete = null;
+  if (soundDeleteDialog.open) soundDeleteDialog.close();
+}
+document.getElementById("soundDeleteCancelButton").addEventListener("click", () => settleSoundDelete(false));
+document.getElementById("soundDeleteConfirmButton").addEventListener("click", () => settleSoundDelete(true));
+soundDeleteDialog.addEventListener("close", () => settleSoundDelete(false));
+function confirmSoundDelete(label) {
+  settleSoundDelete(false);
+  soundDeleteMessage.textContent = `"${label}" 알람음을 삭제할까요?`;
+  soundDeleteDialog.showModal();
+  return new Promise((resolve) => {
+    resolveSoundDelete = resolve;
+  });
+}
 
 const updateDialog = document.getElementById("updateDialog");
 const updateLaterButton = document.getElementById("updateLaterButton");
@@ -447,9 +473,42 @@ function loadTimerVolume(id) {
   return Number.isFinite(stored) && stored >= 0 && stored <= 100 ? stored : DEFAULT_TIMER_VOLUME;
 }
 
+// Built-in alarm sounds followed by the user's registered ones (see
+// customSounds.js), which get a music-file icon and an × to delete them.
+function getAlarmTypes() {
+  return [...ALARM_TYPES, ...getCustomSounds().map((sound) => ({ ...sound, icon: "file-music", removable: true }))];
+}
+
+// The alarm sound dropdown's last row: not a sound, but uploads one.
+const UPLOAD_SOUND_ITEM = { id: "upload-sound", label: "소리 파일 업로드", icon: "file-up", action: true };
+const alarmTypeSelectItems = () => [...getAlarmTypes(), UPLOAD_SOUND_ITEM];
+
+// Every rendered timer's alarm sound dropdown registers a refresher here, so
+// registering or deleting a sound (shared by all timers) updates them all.
+const alarmTypeSelectRefreshers = new Set();
+function refreshAlarmTypeSelects() {
+  alarmTypeSelectRefreshers.forEach((refresh) => refresh());
+}
+
+// Timers set to a sound that was just deleted fall back to the default.
+function handleCustomSoundDeleted(soundId) {
+  timers.forEach((timer) => {
+    if (timer.alarmType !== soundId) return;
+    timer.alarmType = DEFAULT_ALARM_TYPE;
+    localStorage.setItem(`meso-watch-timer-${timer.id}-alarm-type`, timer.alarmType);
+  });
+  refreshAlarmTypeSelects();
+}
+
+const CUSTOM_SOUND_ERRORS = {
+  "too-large": `${MAX_CUSTOM_SOUND_BYTES / 1024 / 1024}MB 이하의 파일만 등록할 수 있습니다.`,
+  "decode-failed": "재생할 수 없는 오디오 파일입니다.",
+  "save-failed": "알람음을 저장하지 못했습니다.",
+};
+
 function loadTimerAlarmType(id) {
   const stored = localStorage.getItem(`meso-watch-timer-${id}-alarm-type`);
-  return ALARM_TYPES.some((alarmType) => alarmType.id === stored) ? stored : DEFAULT_ALARM_TYPE;
+  return getAlarmTypes().some((alarmType) => alarmType.id === stored) ? stored : DEFAULT_ALARM_TYPE;
 }
 
 function loadTimerAlarmRepeatCount(id) {
@@ -699,7 +758,9 @@ function renderTimer(timer, target = timerList) {
         ${settingsSubpageHeaderMarkup("alarm")}
         <div class="alarm-type-setting">
           <span class="control-label">알람음</span>
-          ${iconSelectMarkup({ triggerClass: "alarm-type-select", ariaLabel: `타이머 ${timer.id} 알람음`, items: ALARM_TYPES })}
+          ${iconSelectMarkup({ triggerClass: "alarm-type-select", ariaLabel: `타이머 ${timer.id} 알람음` })}
+          <input class="custom-sound-file" type="file" accept="audio/*" hidden />
+          <p class="custom-sound-error" role="alert" hidden></p>
         </div>
         <div class="opacity-setting volume-setting">
           <div class="opacity-setting-header">
@@ -773,7 +834,14 @@ function renderTimer(timer, target = timerList) {
     valueDisplay.textContent = `${draft.volume}%`;
   }
   function updateAlarmTypeSettingUi() {
-    updateIconSelect(element.querySelector(".alarm-type-setting .icon-select"), ALARM_TYPES, draft.alarmType);
+    updateIconSelect(element.querySelector(".alarm-type-setting .icon-select"), getAlarmTypes(), draft.alarmType);
+  }
+  function showCustomSoundError(message) {
+    const errorElement = element.querySelector(".custom-sound-error");
+    if (errorElement.textContent === message && errorElement.hidden === !message) return;
+    errorElement.textContent = message;
+    errorElement.hidden = !message;
+    if (settingsModal.open) syncWindowToDialog(settingsModal);
   }
   function updateAlarmRepeatSettingUi() {
     element.querySelector(".alarm-repeat-count-slider").value = draft.alarmRepeatCount;
@@ -806,6 +874,7 @@ function renderTimer(timer, target = timerList) {
     updateIconOptionsUi();
     updateVolumeSettingUi();
     updateAlarmTypeSettingUi();
+    showCustomSoundError("");
     updateAlarmRepeatSettingUi();
     updateAutoRestartSettingUi();
     updateProgressStyleSettingUi();
@@ -823,11 +892,58 @@ function renderTimer(timer, target = timerList) {
   element.querySelector(".volume-slider-input").addEventListener("change", (event) => {
     previewAlarmSound(effectiveVolume(volume, Number(event.target.value)), draft.alarmType);
   });
-  const alarmTypeSelect = setupIconSelect(element.querySelector(".alarm-type-setting .icon-select"), element, ALARM_TYPES, (alarmTypeId) => {
+  const alarmTypeSelect = setupIconSelect(element.querySelector(".alarm-type-setting .icon-select"), element, alarmTypeSelectItems(), (alarmTypeId) => {
     draft.alarmType = alarmTypeId;
     updateAlarmTypeSettingUi();
     previewAlarmSound(effectiveVolume(volume, draft.volume), draft.alarmType);
+  }, {
+    onAction: () => customSoundFileInput.click(),
+    onRemove: (soundId) => removeCustomSound(soundId),
   });
+  // Rebuilds this dropdown after the registered sounds change; a draft set to
+  // a sound that's gone falls back to the default. Drops itself once this
+  // card has been removed/re-rendered.
+  const refreshAlarmTypeSelect = () => {
+    if (!element.isConnected) {
+      alarmTypeSelectRefreshers.delete(refreshAlarmTypeSelect);
+      return;
+    }
+    if (!getAlarmTypes().some((alarmType) => alarmType.id === draft.alarmType)) draft.alarmType = DEFAULT_ALARM_TYPE;
+    alarmTypeSelect.setItems(alarmTypeSelectItems());
+    updateAlarmTypeSettingUi();
+    updateSettingsPreviews();
+  };
+  alarmTypeSelectRefreshers.add(refreshAlarmTypeSelect);
+  // Upload picked from the dropdown's last row; the new sound gets selected.
+  const customSoundFileInput = element.querySelector(".custom-sound-file");
+  customSoundFileInput.addEventListener("change", async () => {
+    const file = customSoundFileInput.files[0];
+    customSoundFileInput.value = "";
+    if (!file) return;
+    showCustomSoundError("");
+    try {
+      const sound = await addCustomSound(file);
+      draft.alarmType = sound.id;
+      refreshAlarmTypeSelects();
+      previewAlarmSound(effectiveVolume(volume, draft.volume), draft.alarmType);
+    } catch (error) {
+      showCustomSoundError(CUSTOM_SOUND_ERRORS[error.message] ?? CUSTOM_SOUND_ERRORS["save-failed"]);
+    }
+  });
+  // The × on a registered sound's row.
+  async function removeCustomSound(soundId) {
+    const sound = getCustomSounds().find((item) => item.id === soundId);
+    if (!sound) return;
+    if (!(await confirmSoundDelete(sound.label))) return;
+    showCustomSoundError("");
+    try {
+      await deleteCustomSound(sound.id);
+    } catch {
+      showCustomSoundError("알람음을 삭제하지 못했습니다.");
+      return;
+    }
+    handleCustomSoundDeleted(sound.id);
+  }
   element.querySelector(".alarm-repeat-count-slider").addEventListener("input", (event) => {
     draft.alarmRepeatCount = Number(event.target.value);
     updateAlarmRepeatSettingUi();
@@ -1057,7 +1173,7 @@ function renderTimer(timer, target = timerList) {
     if (draft.autoRestart) timeParts.push("자동 재시작");
     if (draft.restartDelay) timeParts.push(`지연 ${draft.restartDelay}초`);
     preview("time").replaceChildren(previewText(timeParts.join(" · ")));
-    const alarmType = ALARM_TYPES.find((item) => item.id === draft.alarmType) ?? ALARM_TYPES[0];
+    const alarmType = getAlarmTypes().find((item) => item.id === draft.alarmType) ?? ALARM_TYPES[0];
     const repeatText = draft.alarmRepeatUnlimited ? "무제한" : `${draft.alarmRepeatCount}회`;
     preview("alarm").replaceChildren(
       ...(alarmType.icon ? [previewIcon(alarmType.icon)] : []),
@@ -1485,6 +1601,9 @@ addTimerButton.addEventListener("click", () => {
   openDialog(draftHost.querySelector(".settings-modal"));
 });
 
+// Registered alarm sounds must be loaded before timers read their saved
+// alarm type, or a timer set to one would fall back to the default.
+await loadCustomSounds();
 const initialTimerIds = loadTimerIds();
 if (initialTimerIds.length > 0) {
   timers = initialTimerIds.map((id, index) => buildTimer(id, loadDuration(id) ?? 60000, index));

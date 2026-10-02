@@ -76,6 +76,18 @@
     </div>
   </dialog>
 
+  <dialog class="settings-modal confirm-modal" id="soundDeleteDialog" aria-label="알람음 삭제 확인">
+    <div class="settings-modal-header">
+      <span class="section-title">알람음 삭제</span>
+    </div>
+    <p class="confirm-message" id="soundDeleteMessage"></p>
+    <p class="confirm-message confirm-note">이 알람음을 쓰는 모든 타이머는 기본음으로 바뀝니다.</p>
+    <div class="settings-actions">
+      <button class="secondary" id="soundDeleteCancelButton" type="button">취소</button>
+      <button class="primary" id="soundDeleteConfirmButton" type="button">삭제</button>
+    </div>
+  </dialog>
+
   <dialog class="settings-modal confirm-modal" id="updateDialog" aria-label="업데이트 알림">
     <div class="settings-modal-header">
       <span class="section-title">업데이트 알림</span>

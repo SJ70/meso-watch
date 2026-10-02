@@ -1,3 +1,5 @@
+import { isCustomSoundId, getCustomSoundBuffer } from "./customSounds.js";
+
 function scheduleTone(audioContext, { frequency, type = "sine", startTime, duration, peakGain }) {
   const oscillator = audioContext.createOscillator();
   const gain = audioContext.createGain();
@@ -139,12 +141,42 @@ const ALARM_PATTERNS = {
   },
 };
 
+// A registered sound (see customSounds.js) plays its decoded file at the
+// volume level as-is (100% = the file's own loudness), unlike the synthesized
+// patterns, which are scaled down to a comfortable peak. Returns false if the
+// sound isn't available (e.g. deleted), so the caller can fall back.
+function playCustomSound(audioContext, alarmType, level) {
+  const buffer = getCustomSoundBuffer(alarmType);
+  if (!buffer) return false;
+  const source = audioContext.createBufferSource();
+  const gain = audioContext.createGain();
+  source.buffer = buffer;
+  gain.gain.value = level / 100;
+  source.connect(gain);
+  gain.connect(audioContext.destination);
+  source.start();
+  return true;
+}
+
+function playAlarmType(audioContext, level, alarmType) {
+  if (isCustomSoundId(alarmType) && playCustomSound(audioContext, alarmType, level)) return;
+  const pattern = ALARM_PATTERNS[alarmType] || ALARM_PATTERNS.beep;
+  pattern(audioContext, 0.5 * (level / 100));
+}
+
+// The alarm repeats every second, but a registered sound can be longer than
+// that - each new play of a registered sound cuts off its previous one
+// (closing that play's context) instead of piling up on top of it.
+const customSoundContexts = new Map(); // alarmType -> AudioContext
+
 export function playNotifySound(level, alarmType = "beep") {
   if (typeof AudioContext === "undefined" || level === 0) return;
   const audioContext = new AudioContext();
-  const peakGain = 0.5 * (level / 100);
-  const pattern = ALARM_PATTERNS[alarmType] || ALARM_PATTERNS.beep;
-  pattern(audioContext, peakGain);
+  if (isCustomSoundId(alarmType)) {
+    customSoundContexts.get(alarmType)?.close();
+    customSoundContexts.set(alarmType, audioContext);
+  }
+  playAlarmType(audioContext, level, alarmType);
 }
 
 // Settings-modal sliders/selects call this to preview a sound as the user
@@ -158,9 +190,7 @@ export function previewAlarmSound(level, alarmType = "beep") {
   }
   if (typeof AudioContext === "undefined" || level === 0) return;
   previewAudioContext = new AudioContext();
-  const peakGain = 0.5 * (level / 100);
-  const pattern = ALARM_PATTERNS[alarmType] || ALARM_PATTERNS.beep;
-  pattern(previewAudioContext, peakGain);
+  playAlarmType(previewAudioContext, level, alarmType);
 }
 
 export function effectiveVolume(masterVolume, timerVolume) {
