@@ -164,18 +164,22 @@ function playAlarmType(audioContext, level, alarmType) {
   pattern(audioContext, 0.5 * (level / 100));
 }
 
-// The alarm repeats every second, but a registered sound can be longer than
-// that - each new play of a registered sound cuts off its previous one
-// (closing that play's context) instead of piling up on top of it.
-const customSoundContexts = new Map(); // alarmType -> AudioContext
+// A timer's alarm repeats every second (and restarts when the timer finishes
+// again mid-alarm), but its sound can run longer than that - a registered
+// sound especially. Each new play on a channel (one per timer) cuts off that
+// channel's previous play by closing its context, whatever the sound, so a
+// timer's alarm never piles up on itself. Separate timers ringing at once
+// still overlap - those are separate alerts.
+const channelContexts = new Map(); // channel -> AudioContext
 
-export function playNotifySound(level, alarmType = "beep") {
+export function playNotifySound(level, alarmType = "beep", channel = null) {
   if (typeof AudioContext === "undefined" || level === 0) return;
-  const audioContext = new AudioContext();
-  if (isCustomSoundId(alarmType)) {
-    customSoundContexts.get(alarmType)?.close();
-    customSoundContexts.set(alarmType, audioContext);
+  if (channel !== null) {
+    channelContexts.get(channel)?.close();
+    channelContexts.delete(channel);
   }
+  const audioContext = new AudioContext();
+  if (channel !== null) channelContexts.set(channel, audioContext);
   playAlarmType(audioContext, level, alarmType);
 }
 
@@ -213,7 +217,7 @@ export function notifyDone(timer, getMasterVolume, onBeep, maxRepeats, onStateCh
   // not just once at start, so changing the volume while the alarm is
   // already repeating takes effect on the next beep instead of the next timer.
   const play = () => {
-    playNotifySound(effectiveVolume(getMasterVolume(), timer.volume), timer.alarmType);
+    playNotifySound(effectiveVolume(getMasterVolume(), timer.volume), timer.alarmType, timer.id);
     onBeep?.();
   };
   // If a previous alarm cycle is still counting down (e.g. auto-restart

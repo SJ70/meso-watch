@@ -480,7 +480,9 @@ function getAlarmTypes() {
 }
 
 // The alarm sound dropdown's last row: not a sound, but uploads one.
-const UPLOAD_SOUND_ITEM = { id: "upload-sound", label: "소리 파일 업로드", icon: "file-up", action: true };
+// The alarm repeats every second and each repeat cuts off the last one, so
+// longer files get clipped.
+const UPLOAD_SOUND_ITEM = { id: "upload-sound", label: "소리 파일 업로드", icon: "file-up", action: true, hint: "1초 이내 권장" };
 const alarmTypeSelectItems = () => [...getAlarmTypes(), UPLOAD_SOUND_ITEM];
 
 // Every rendered timer's alarm sound dropdown registers a refresher here, so

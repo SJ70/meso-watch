@@ -8,6 +8,7 @@ import { createIconElement } from "../svg/icons.js";
 // - action: not a value - clicking it calls onAction(id) instead of
 //   onSelect, and it's never shown as selected (e.g. "upload a sound").
 // - removable: gets an × button on the right that calls onRemove(id).
+// - hint: a short note shown dimmed at the right end of the row.
 // The options themselves are built by setupIconSelect (and rebuilt by its
 // setItems), with labels set as text since some come from user input
 // (registered alarm sound file names).
@@ -47,6 +48,12 @@ function createOptionRow(item) {
   label.className = "icon-select-option-label";
   label.textContent = item.label;
   option.append(icon, label);
+  if (item.hint) {
+    const hint = document.createElement("span");
+    hint.className = "icon-select-option-hint";
+    hint.textContent = item.hint;
+    option.append(hint);
+  }
   row.append(option);
   if (item.removable) {
     const remove = document.createElement("button");

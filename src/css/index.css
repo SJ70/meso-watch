@@ -1378,6 +1378,15 @@ button:disabled {
   color: var(--muted);
 }
 
+.icon-select-option-hint {
+  flex: 0 0 auto;
+  margin-left: auto;
+  color: var(--muted);
+  opacity: 0.7;
+  font-weight: 400;
+  font-size: 0.62rem;
+}
+
 .icon-select-option.is-action:hover,
 .icon-select-option.is-action:focus-visible {
   color: var(--ink);
