@@ -29,15 +29,21 @@ import { loadTimerProgressStyle, saveTimerProgressStyle, removeTimerProgressStyl
 import { loadTimerColor, saveTimerColor, removeTimerColor, applyTimerColor, timerColorSettingMarkup, setupTimerColorSetting, updateTimerColorSetting } from "./timerColor.js";
 import { loadCustomSounds, getCustomSounds, addCustomSound, renameCustomSound, deleteCustomSound, MAX_CUSTOM_SOUND_BYTES } from "./customSounds.js";
 import { loadCustomImages, getCustomImages, getCustomImageUrl, addCustomImage, renameCustomImage, deleteCustomImage, isCustomImageId, MAX_CUSTOM_IMAGE_BYTES } from "./customImages.js";
-import { openDialog, registerDialogShrinkOnClose } from "./dialog-utils.js";
+import { openDialog, registerDialogShrinkOnClose, syncWindowToOpenDialogs } from "./dialog-utils.js";
 import { previewAlarmSound, stopAlarmPreview, effectiveVolume, notifyDone, stopAlarm } from "./sound.js";
 import { formatShortcut, NORMALIZE_MODIFIER_CODE } from "./shortcuts.js";
 import { checkForUpdate } from "./updateCheck.js";
 import { configureWindowSizeState, syncWindowToContent, syncWindowToDialog } from "./windowSize.js";
 
 const timerList = document.getElementById("timerList");
-const addTimerButton = document.getElementById("addTimerButton");
-addTimerButton.appendChild(createIconElement("alarm-clock-plus", { width: 18, height: 18 }));
+const timerManageButton = document.getElementById("timerManageButton");
+timerManageButton.appendChild(createIconElement("alarm-clock", { width: 18, height: 18 }));
+const timerManageDialog = document.getElementById("timerManageDialog");
+const timerManageList = document.getElementById("timerManageList");
+const timerManageAddButton = document.getElementById("timerManageAddButton");
+const timerManageCloseButton = document.getElementById("timerManageCloseButton");
+timerManageAddButton.prepend(createIconElement("alarm-clock-plus", { width: 16, height: 16 }));
+registerDialogShrinkOnClose(timerManageDialog);
 
 fetch("../package.json")
   .then((response) => response.json())
@@ -354,28 +360,38 @@ let recordingElement = null;
 let draggedTimer = null;
 let reorderLocked = false;
 
-function animateTimerListReorder(update) {
+// FLIP (First-Last-Invert-Play): records each item's position, lets `update`
+// change the DOM order (and whatever data backs it), then plays every item
+// that moved from its old spot back to its new one. Used for both the main
+// timer list (items() => ".timer-card") and the timer management dialog's
+// row list (items() => ".timer-manage-row") - the node's data-timer-id is
+// what ties a before/after position back to the same item.
+function animateListReorder(container, itemSelector, update) {
   const before = new Map();
-  timerList.querySelectorAll(".timer-card").forEach((card) => {
-    before.set(card.dataset.timerId, card.getBoundingClientRect());
+  container.querySelectorAll(itemSelector).forEach((item) => {
+    before.set(item.dataset.timerId, item.getBoundingClientRect());
   });
 
   update();
 
-  timerList.querySelectorAll(".timer-card").forEach((card) => {
-    const first = before.get(card.dataset.timerId);
+  container.querySelectorAll(itemSelector).forEach((item) => {
+    const first = before.get(item.dataset.timerId);
     if (!first) return;
-    const last = card.getBoundingClientRect();
+    const last = item.getBoundingClientRect();
     const deltaX = first.left - last.left;
     const deltaY = first.top - last.top;
     if (!deltaX && !deltaY) return;
-    card.style.transition = "none";
-    card.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
+    item.style.transition = "none";
+    item.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
     requestAnimationFrame(() => {
-      card.style.transition = "transform 180ms ease";
-      card.style.transform = "";
+      item.style.transition = "transform 180ms ease";
+      item.style.transform = "";
     });
   });
+}
+
+function animateTimerListReorder(update) {
+  animateListReorder(timerList, ".timer-card", update);
 }
 
 function defaultShortcut(timerId) {
@@ -503,6 +519,20 @@ function loadTimerIds() {
 
 function saveTimerIds() {
   localStorage.setItem("meso-watch-timer-ids", JSON.stringify(timers.map((timer) => timer.id)));
+}
+
+function loadTimerEnabled(id) {
+  const raw = localStorage.getItem(`meso-watch-timer-${id}-enabled`);
+  return raw === null ? true : raw === "true";
+}
+
+function isTimerEnabled(timerId) {
+  return timers.find((timer) => timer.id === timerId)?.enabled ?? true;
+}
+
+function setTimerEnabled(timer, enabled) {
+  timer.enabled = enabled;
+  localStorage.setItem(`meso-watch-timer-${timer.id}-enabled`, String(enabled));
 }
 
 function loadTimerIcon(id) {
@@ -654,7 +684,7 @@ function cancelTimerCardBlink(timer) {
 function buildTimer(id, totalMs, fallbackIndex = null) {
   const name = localStorage.getItem(`meso-watch-timer-${id}-name`)
     || (fallbackIndex === null ? defaultTimerName(null) : `타이머 ${fallbackIndex + 1}`);
-  return { id, name, totalMs, remainingSeconds: Math.floor(totalMs / 1000), remainingMs: totalMs, timerId: null, alarmIntervalId: null, remainingAlarmCount: 0, shortcut: loadShortcut(id), icon: loadTimerIcon(id), volume: loadTimerVolume(id), alarmType: loadTimerAlarmType(id), alarmRepeatCount: loadTimerAlarmRepeatCount(id), alarmRepeatUnlimited: loadTimerAlarmRepeatUnlimited(id), autoRestart: loadTimerAutoRestart(id), restartDelay: loadTimerRestartDelay(id), restartHandle: null, progressStyle: loadTimerProgressStyle(id), color: loadTimerColor(id), isDraft: false };
+  return { id, name, totalMs, remainingSeconds: Math.floor(totalMs / 1000), remainingMs: totalMs, timerId: null, alarmIntervalId: null, remainingAlarmCount: 0, shortcut: loadShortcut(id), icon: loadTimerIcon(id), volume: loadTimerVolume(id), alarmType: loadTimerAlarmType(id), alarmRepeatCount: loadTimerAlarmRepeatCount(id), alarmRepeatUnlimited: loadTimerAlarmRepeatUnlimited(id), autoRestart: loadTimerAutoRestart(id), restartDelay: loadTimerRestartDelay(id), restartHandle: null, progressStyle: loadTimerProgressStyle(id), color: loadTimerColor(id), enabled: loadTimerEnabled(id), isDraft: false };
 }
 
 function createTimer(minutes = DEFAULT_TIMER_MINUTES) {
@@ -770,7 +800,6 @@ function renderTimer(timer, target = timerList) {
           <button class="timer-action reset-button" type="button" aria-label="정지"></button>
           <button class="timer-action restart-button" type="button" aria-label="재시작"></button>
         </div>
-        <button class="timer-action remove-button" type="button" aria-label="타이머 ${timer.id} 삭제"></button>
       </div>
     </section>
     <dialog class="settings-modal" aria-label="타이머 설정">
@@ -1141,7 +1170,6 @@ function renderTimer(timer, target = timerList) {
     if (settingsModal.open) syncWindowToDialog(settingsModal);
   });
   element.querySelector(".settings-toggle").appendChild(createIconElement("settings", { width: 16, height: 16 }));
-  element.querySelector(".remove-button").appendChild(createIconElement("trash", { width: 16, height: 16 }));
   element.querySelector(".start-button").appendChild(createIconElement("play", { width: 16, height: 16 }));
   element.querySelector(".pause-button").appendChild(createIconElement("pause", { width: 16, height: 16 }));
   element.querySelector(".reset-button").appendChild(createIconElement("square", { width: 16, height: 16 }));
@@ -1193,6 +1221,7 @@ function renderTimer(timer, target = timerList) {
   element.addEventListener("drop", (event) => {
     event.preventDefault();
     saveTimerIds();
+    renderTimerManageList();
   });
   element.querySelector(".settings-toggle").addEventListener("click", () => {
     resetDraftFromTimer();
@@ -1256,11 +1285,13 @@ function renderTimer(timer, target = timerList) {
       timerList.appendChild(element);
       draftHost?.remove();
       saveTimerIds();
-      syncWindowToContent();
+      renderTimerManageList();
+      syncWindowToOpenDialogs();
     }
     saveDuration(timer);
     saveShortcuts();
     updateTimerElement(timer);
+    if (!timer.isDraft) renderTimerManageList();
     settingsModal.close();
   });
   settingsModal.addEventListener("cancel", (event) => {
@@ -1497,7 +1528,6 @@ function renderTimer(timer, target = timerList) {
   element.querySelector(".pause-button").addEventListener("click", () => (timer.isFinished || timer.restartHandle ? resetTimer(timer) : stopTimer(timer)));
   element.querySelector(".reset-button").addEventListener("click", () => resetTimer(timer));
   element.querySelector(".restart-button").addEventListener("click", () => restartTimer(timer));
-  element.querySelector(".remove-button").addEventListener("click", () => confirmDeleteTimer(timer));
   // A new timer's settings open straight away without going through the
   // settings-toggle click, so fill the setting controls in up front too.
   resetDraftFromTimer();
@@ -1507,8 +1537,119 @@ function renderTimer(timer, target = timerList) {
 
 function renderAllTimers() {
   timerList.replaceChildren();
+  // Every timer gets a card - including disabled ones - so each one always
+  // has a live element and settings dialog to edit from the timer
+  // management dialog; updateTimerVisibility hides the disabled ones.
   timers.forEach((timer) => renderTimer(timer));
+  updateTimerVisibility();
 }
+
+function updateTimerVisibility() {
+  timers.forEach((timer) => {
+    const element = getTimerElement(timer);
+    if (element) element.classList.toggle("timer-disabled", !isTimerEnabled(timer.id));
+  });
+}
+
+// Builds the timer management dialog's row list in the timers' current
+// order - drag to reorder, checkbox to enable/disable, pen to edit (opens
+// that timer's own settings dialog), trash to delete.
+let draggedManageTimerId = null;
+let manageReorderLocked = false;
+// Must match the row count .timer-manage-list's max-height is sized for in
+// index.css (10 * row height + 9 gaps).
+const TIMER_MANAGE_VISIBLE_ROWS = 10;
+function renderTimerManageList() {
+  timerManageList.replaceChildren();
+  timers.forEach((timer) => {
+    const row = document.createElement("div");
+    row.className = "timer-manage-row";
+    row.draggable = true;
+    row.dataset.timerId = timer.id;
+    row.innerHTML = `
+      <label class="toggle-switch timer-manage-enable">
+        <input type="checkbox"${isTimerEnabled(timer.id) ? " checked" : ""} aria-label="${escapeHtml(timer.name)} 활성화" />
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+      </label>
+      <span class="timer-manage-name">${escapeHtml(timer.name)}</span>
+      <button class="timer-action timer-manage-edit" type="button" aria-label="${escapeHtml(timer.name)} 수정"></button>
+      <button class="timer-action timer-manage-delete" type="button" aria-label="${escapeHtml(timer.name)} 삭제"></button>
+    `;
+    row.querySelector(".timer-manage-edit").appendChild(createIconElement("pen", { width: 14, height: 14 }));
+    row.querySelector(".timer-manage-delete").appendChild(createIconElement("trash", { width: 14, height: 14 }));
+    row.querySelector("input[type=checkbox]").addEventListener("change", (event) => {
+      setTimerEnabled(timer, event.target.checked);
+      updateTimerVisibility();
+    });
+    // Reuses the card's own gear button rather than opening the dialog
+    // directly, so this goes through the same resetDraftFromTimer() call
+    // that button's click handler makes (that closure isn't reachable from
+    // here) and the draft shown is never stale.
+    row.querySelector(".timer-manage-edit").addEventListener("click", () => {
+      getTimerElement(timer)?.querySelector(".settings-toggle")?.click();
+    });
+    row.querySelector(".timer-manage-delete").addEventListener("click", () => confirmDeleteTimer(timer));
+    row.addEventListener("dragstart", (event) => {
+      if (event.target.closest("button, input")) {
+        event.preventDefault();
+        return;
+      }
+      draggedManageTimerId = timer.id;
+      row.classList.add("is-dragging");
+      event.dataTransfer.effectAllowed = "move";
+      event.dataTransfer.setData("text/plain", String(timer.id));
+    });
+    row.addEventListener("dragend", () => {
+      row.classList.remove("is-dragging");
+      draggedManageTimerId = null;
+    });
+    // Swaps live as the dragged row crosses into this one (see the main
+    // timer list's own dragover handler above, which this mirrors) rather
+    // than waiting for drop, so the list animates into place as you drag.
+    row.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+      if (draggedManageTimerId === null || draggedManageTimerId === timer.id || manageReorderLocked) return;
+      const fromIndex = timers.findIndex((item) => item.id === draggedManageTimerId);
+      const toIndex = timers.findIndex((item) => item.id === timer.id);
+      if (fromIndex < 0 || toIndex < 0 || fromIndex === toIndex) return;
+
+      const rect = row.getBoundingClientRect();
+      const movingDown = fromIndex < toIndex;
+      const triggerY = movingDown ? rect.top + rect.height * 0.3 : rect.top + rect.height * 0.7;
+      if (movingDown && event.clientY < triggerY) return;
+      if (!movingDown && event.clientY > triggerY) return;
+
+      manageReorderLocked = true;
+      setTimeout(() => { manageReorderLocked = false; }, 200);
+
+      animateListReorder(timerManageList, ".timer-manage-row", () => {
+        const [moved] = timers.splice(fromIndex, 1);
+        timers.splice(toIndex, 0, moved);
+        const draggedRow = timerManageList.querySelector(`[data-timer-id="${draggedManageTimerId}"]`);
+        const referenceRow = movingDown ? row.nextSibling : row;
+        timerManageList.insertBefore(draggedRow, referenceRow);
+      });
+    });
+    row.addEventListener("drop", (event) => {
+      event.preventDefault();
+      saveTimerIds();
+      renderAllTimers();
+    });
+    timerManageList.appendChild(row);
+  });
+  // Rows are a fixed height (see .timer-manage-row/-list in index.css), so
+  // whether the list actually scrolls is just a row-count check - no need to
+  // measure scrollHeight (which would read 0 before the dialog is shown).
+  timerManageList.classList.toggle("has-scroll", timers.length > TIMER_MANAGE_VISIBLE_ROWS);
+}
+
+timerManageButton.addEventListener("click", () => {
+  renderTimerManageList();
+  openDialog(timerManageDialog);
+});
+timerManageCloseButton.addEventListener("click", () => timerManageDialog.close());
+timerManageAddButton.addEventListener("click", () => openAddTimerDraft());
 
 function tickTimer(timer) {
   const remainingMs = Math.max(0, timer.endTimestamp - Date.now());
@@ -1698,14 +1839,16 @@ function removeTimer(timer) {
   localStorage.removeItem(`meso-watch-timer-${timer.id}-alarm-repeat-unlimited`);
   localStorage.removeItem(`meso-watch-timer-${timer.id}-auto-restart`);
   localStorage.removeItem(`meso-watch-timer-${timer.id}-restart-delay`);
+  localStorage.removeItem(`meso-watch-timer-${timer.id}-enabled`);
   removeTimerProgressStyle(timer.id);
   removeTimerColor(timer.id);
   timers = timers.filter((item) => item !== timer);
   timer.element = null;
   renderAllTimers();
+  renderTimerManageList();
   saveTimerIds();
   saveShortcuts();
-  syncWindowToContent();
+  syncWindowToOpenDialogs();
 }
 
 function confirmDeleteTimer(timer) {
@@ -1771,7 +1914,7 @@ window.addEventListener("keydown", (event) => {
   });
 });
 
-addTimerButton.addEventListener("click", () => {
+function openAddTimerDraft() {
   const timer = createTimer();
   timer.isDraft = true;
   const draftHost = document.createElement("div");
@@ -1779,7 +1922,7 @@ addTimerButton.addEventListener("click", () => {
   document.body.appendChild(draftHost);
   renderTimer(timer, draftHost);
   openDialog(draftHost.querySelector(".settings-modal"));
-});
+}
 
 // Uploaded alarm sounds / images must be loaded before timers read their
 // saved alarm type / icon, or a timer set to one would fall back to the default.

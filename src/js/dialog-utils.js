@@ -10,6 +10,19 @@ export async function openDialog(dialog) {
   dialog.showModal();
 }
 
+// Resizes to whichever dialog is still open (if any), else shrinks to the
+// main content. Used both when a dialog closes and by actions that can run
+// while a dialog (e.g. the timer management dialog) is still open behind
+// them, so they don't shrink the window out from under it.
+export function syncWindowToOpenDialogs() {
+  const stillOpen = [...document.querySelectorAll("dialog[open]")].pop();
+  return stillOpen ? syncWindowToDialog(stillOpen) : syncWindowToContent();
+}
+
+// If closing this dialog reveals another dialog still open underneath it
+// (e.g. the timer-add or delete-confirm dialogs opened from within the timer
+// management dialog), resize to that one instead of shrinking to the main
+// content - otherwise the window would shrink out from under it.
 export function registerDialogShrinkOnClose(dialog) {
-  dialog.addEventListener("close", () => syncWindowToContent());
+  dialog.addEventListener("close", syncWindowToOpenDialogs);
 }

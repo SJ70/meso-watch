@@ -106,10 +106,6 @@ header {
   gap: 8px;
 }
 
-.add-timer {
-  flex: 0 0 auto;
-}
-
 .title-row {
   display: flex;
   align-items: center;
@@ -1039,13 +1035,13 @@ button:disabled {
   background: #303b47;
 }
 
-.add-timer,
+.timer-manage-button,
 .close-button,
 .screen-settings-button {
   background: color-mix(in srgb, var(--paper) calc(var(--panel-opacity) * 100%), transparent);
 }
 
-.add-timer,
+.timer-manage-button,
 .close-button,
 .screen-settings-button {
   padding: 12px;
@@ -1465,4 +1461,112 @@ button:disabled {
 
 .settings-modal input.shortcut-input {
   cursor: pointer;
+}
+
+/* Hidden instead of unrendered (see renderAllTimers/updateTimerVisibility in
+   app.js) so a disabled timer still keeps its element and settings dialog -
+   the timer management dialog edits it through that same dialog. */
+.timer-card.timer-disabled {
+  display: none;
+}
+
+.timer-manage-modal {
+  width: min(100% - 32px, 380px);
+}
+
+/* Rows are a fixed height so this can cap at an exact row count (10) instead
+   of an awkward viewport fraction - past that, the list scrolls. */
+.timer-manage-list {
+  display: grid;
+  gap: 6px;
+  max-height: calc(10 * 36px + 9 * 6px);
+  margin-bottom: 10px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.35) transparent;
+}
+
+/* Only reserves room for the scrollbar once there's actually something to
+   scroll (see updateTimerManageScrollState in app.js) - otherwise (10 or
+   fewer timers) the rows use the dialog's full width. */
+.timer-manage-list.has-scroll {
+  padding-right: 6px;
+}
+
+.timer-manage-list::-webkit-scrollbar {
+  display: block;
+  width: 6px;
+}
+
+.timer-manage-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.timer-manage-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 3px;
+}
+
+.timer-manage-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.timer-manage-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  padding: 6px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--card);
+  cursor: grab;
+}
+
+.timer-manage-row.is-dragging {
+  opacity: 0.6;
+}
+
+.timer-manage-enable {
+  flex: 0 0 auto;
+  margin-top: 0;
+}
+
+.timer-manage-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 0.82rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.timer-manage-edit,
+.timer-manage-delete {
+  flex: 0 0 auto;
+  padding: 5px;
+}
+
+.timer-manage-add {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  color: var(--ink);
+  background: transparent;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.timer-manage-add:hover,
+.timer-manage-add:focus-visible {
+  color: var(--ink);
+  background: #303b47;
 }
