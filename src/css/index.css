@@ -1269,6 +1269,16 @@ button:disabled {
   display: none;
 }
 
+/* Flipped above the trigger when the list would otherwise run past the
+   bottom of the window (a dropdown low in the settings dialog, e.g. the
+   background image one) and push the overlay into scrolling. Set by
+   setupIconSelect, which also caps max-height when neither side has room
+   for the full list. */
+.icon-select-options.is-above {
+  top: auto;
+  bottom: calc(100% + 3px);
+}
+
 .icon-select-option {
   width: 100%;
   height: var(--icon-select-option-height);

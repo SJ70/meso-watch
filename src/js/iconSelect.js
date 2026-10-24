@@ -76,6 +76,40 @@ function createOptionRow(item) {
   return row;
 }
 
+// At least this many options stay visible when the list has to be shortened
+// to fit, even if that means a shorter list than CSS's 5.5-option max.
+const MIN_VISIBLE_OPTIONS = 3;
+
+// Places the open list so it stays inside the window: below the trigger when
+// it fits (the default), flipped above it when that side has more room, and
+// shortened to the available space when neither side fits the whole list.
+// Without this, a dropdown near the bottom of the settings dialog overflows
+// the Electron overlay's window and makes it scroll.
+//
+// Everything is measured in viewport px (getBoundingClientRect, innerHeight)
+// because electron.css zooms <html>; max-height is written back in CSS px, so
+// the measured list height is divided out as the zoom scale first.
+function positionOptionList(trigger, optionList) {
+  optionList.classList.remove("is-above");
+  optionList.style.maxHeight = "";
+
+  const triggerRect = trigger.getBoundingClientRect();
+  const listRect = optionList.getBoundingClientRect();
+  const scale = optionList.offsetHeight > 0 ? listRect.height / optionList.offsetHeight : 1;
+  // The 3px CSS offset between trigger and list, at the current zoom - reused
+  // as the breathing room kept against the window edge.
+  const gap = Math.max(0, listRect.top - triggerRect.bottom);
+  const spaceBelow = window.innerHeight - triggerRect.bottom - gap * 2;
+  const spaceAbove = triggerRect.top - gap * 2;
+  const minHeight = MIN_VISIBLE_OPTIONS * optionList.querySelector(".icon-select-option")?.getBoundingClientRect().height || 0;
+
+  if (listRect.height <= spaceBelow) return;
+  const above = spaceAbove > spaceBelow;
+  if (above) optionList.classList.add("is-above");
+  const available = Math.max(above ? spaceAbove : spaceBelow, minHeight);
+  if (listRect.height > available) optionList.style.maxHeight = `${available / scale}px`;
+}
+
 // root is the .icon-select element; container is the surrounding card/dialog,
 // where any click outside root closes the list. Returns { close, setItems },
 // setItems swapping in a new option list (selection is then re-applied by
@@ -98,6 +132,7 @@ export function setupIconSelect(root, container, items, onSelect, { onAction, on
     trigger.setAttribute("aria-expanded", String(open));
     root.classList.toggle("is-open", open);
     if (open) {
+      positionOptionList(trigger, optionList);
       const options = getOptions();
       (options.find((option) => option.getAttribute("aria-selected") === "true") ?? options[0])?.focus();
     }
