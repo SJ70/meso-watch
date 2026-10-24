@@ -1038,14 +1038,7 @@ button:disabled {
 .timer-manage-button,
 .close-button,
 .screen-settings-button {
-  background: color-mix(in srgb, var(--paper) calc(var(--panel-opacity) * 100%), transparent);
-}
-
-.timer-manage-button,
-.close-button,
-.screen-settings-button {
-  padding: 12px;
-  border-radius: 10px;
+  background: color-mix(in srgb, var(--card) calc(var(--panel-opacity) * 100%), transparent);
 }
 
 .close-button {
