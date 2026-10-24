@@ -1,3 +1,4 @@
+const fs = require("node:fs");
 const path = require("node:path");
 const { Worker } = require("node:worker_threads");
 const { app, BrowserWindow, ipcMain, screen, shell } = require("electron");
@@ -8,6 +9,32 @@ let observedShortcuts = [];
 let rawInputWorker = null;
 let rawInputThreadId = null;
 
+const POSITION_FILE = path.join(app.getPath("userData"), "window-position.json");
+
+function loadWindowPosition() {
+  try {
+    const { x, y } = JSON.parse(fs.readFileSync(POSITION_FILE, "utf-8"));
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+    // Discard a position that's no longer on any connected display (e.g. a
+    // monitor was unplugged since the last run).
+    const onScreen = screen.getAllDisplays().some(({ bounds }) => x >= bounds.x && x < bounds.x + bounds.width
+      && y >= bounds.y && y < bounds.y + bounds.height);
+    return onScreen ? { x, y } : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveWindowPosition() {
+  if (!mainWindow) return;
+  const { x, y } = mainWindow.getBounds();
+  try {
+    fs.writeFileSync(POSITION_FILE, JSON.stringify({ x, y }));
+  } catch (error) {
+    console.error("failed to save window position:", error);
+  }
+}
+
 const user32 = koffi.load("user32.dll");
 const PostThreadMessageW = user32.func(
   "bool __stdcall PostThreadMessageW(uint32 idThread, uint32 msg, void *wParam, void *lParam)"
@@ -15,9 +42,13 @@ const PostThreadMessageW = user32.func(
 const WM_QUIT = 0x0012;
 
 function createWindow() {
+  const savedPosition = loadWindowPosition();
+
   mainWindow = new BrowserWindow({
     title: "메소워치",
     icon: path.join(__dirname, "..", "public", "logo.png"),
+    ...savedPosition,
+    center: !savedPosition,
     width: 800,
     resizable: false,
     transparent: true,
@@ -36,6 +67,7 @@ function createWindow() {
   mainWindow.setAlwaysOnTop(true, "screen-saver");
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   mainWindow.on("blur", () => mainWindow.setAlwaysOnTop(true, "screen-saver"));
+  mainWindow.on("moved", saveWindowPosition);
 
   mainWindow.removeMenu();
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
