@@ -46,7 +46,8 @@ header {
   -webkit-app-region: no-drag;
 }
 
-.close-button {
+.close-button,
+.minimize-button {
   display: inline-flex;
 }
 

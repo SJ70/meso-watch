@@ -108,6 +108,10 @@ function stopRawInputWorker() {
   rawInputWorker = null;
 }
 
+ipcMain.handle("minimize-window", () => {
+  mainWindow?.minimize();
+});
+
 ipcMain.handle("set-global-shortcuts", (_event, shortcuts) => {
   observedShortcuts = shortcuts.filter((item) => item.shortcut?.code);
   return true;

@@ -58,8 +58,11 @@ fetch("../package.json")
   })
   .catch(() => {});
 
+const minimizeButton = document.getElementById("minimizeButton");
 const closeButton = document.getElementById("closeButton");
 if (window.electronAPI) {
+  minimizeButton.appendChild(createIconElement("minus", { width: 18, height: 18 }));
+  minimizeButton.addEventListener("click", () => window.electronAPI.minimizeWindow());
   closeButton.appendChild(createIconElement("x", { width: 18, height: 18 }));
   closeButton.addEventListener("click", () => window.close());
 }

@@ -1037,11 +1037,13 @@ button:disabled {
 
 .timer-manage-button,
 .close-button,
+.minimize-button,
 .screen-settings-button {
   background: color-mix(in srgb, var(--card) calc(var(--panel-opacity) * 100%), transparent);
 }
 
-.close-button {
+.close-button,
+.minimize-button {
   display: none;
 }
 

@@ -8,6 +8,7 @@ const ICON_NAMES = [
   "file-music",
   "file-up",
   "map-pin",
+  "minus",
   "pause",
   "pen",
   "play",
