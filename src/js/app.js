@@ -1730,18 +1730,21 @@ function cancelShortcutRecording() {
 }
 
 // Korean keyboards' right Alt/Ctrl double as IME toggles (한/영, 한자).
-// Chromium reports pressing them with the toggle's own key name and the
-// modifier flag left false, even though the user physically pressed
-// Alt/Ctrl. Raw Input (used to actually trigger shortcuts in Electron) reads
-// the real hardware key and reports an ordinary Alt/Ctrl press instead, so
-// recording has to correct for the mismatch here or the shortcut can never
-// match. The web build has no Raw Input trigger path - both recording and
-// triggering see the same browser-level value there, so it's left alone.
+// Chromium reports pressing them with the toggle's own key name, even though
+// the user physically pressed Alt/Ctrl. Raw Input (used to actually trigger
+// shortcuts in Electron) reads the real hardware key and reports an ordinary
+// Alt/Ctrl press instead, so recording has to correct for the mismatch here
+// or the shortcut can never match. The web build has no Raw Input trigger
+// path - both recording and triggering see the same browser-level value
+// there, so it's left alone.
 const IME_MODIFIER_OVERRIDE = {
-  hangulmode: { key: "alt", code: "AltLeft", ctrlKey: false, altKey: true, shiftKey: false, metaKey: false },
-  hanjamode: { key: "control", code: "ControlLeft", ctrlKey: true, altKey: false, shiftKey: false, metaKey: false },
+  hangulmode: { key: "alt", code: "AltLeft" },
+  hanjamode: { key: "control", code: "ControlLeft" },
 };
 
+// Shortcuts match on the physical key alone - any modifier (Ctrl/Shift/Alt)
+// held at the same time is ignored, both when recording and when triggering,
+// so a timer bound to "A" still restarts even if Ctrl happens to be held.
 window.addEventListener("keydown", (event) => {
   if (recordingDraft !== null) {
     event.preventDefault();
@@ -1751,7 +1754,7 @@ window.addEventListener("keydown", (event) => {
     const imeOverride = window.electronAPI ? IME_MODIFIER_OVERRIDE[lowerKey] : null;
     recordingDraft.shortcut = event.key === "Escape"
       ? null
-      : imeOverride || { key: lowerKey, code, ctrlKey: event.ctrlKey, altKey: event.altKey, shiftKey: event.shiftKey, metaKey: event.metaKey };
+      : imeOverride || { key: lowerKey, code };
     shortcutButton.classList.remove("is-setting-shortcut");
     shortcutButton.blur();
     shortcutButton.value = formatShortcut(recordingDraft.shortcut);
@@ -1764,7 +1767,7 @@ window.addEventListener("keydown", (event) => {
   timers.forEach((timer) => {
     const shortcut = timer.shortcut;
     if (!shortcut) return;
-    if (event.key.toLowerCase() === shortcut.key && event.ctrlKey === shortcut.ctrlKey && event.altKey === shortcut.altKey && event.shiftKey === shortcut.shiftKey && event.metaKey === shortcut.metaKey) restartTimer(timer);
+    if (event.key.toLowerCase() === shortcut.key) restartTimer(timer);
   });
 });
 

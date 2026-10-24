@@ -32,11 +32,5 @@ export function formatShortcut(shortcut) {
     arrowright: "→"
   };
 
-  const modifiers = [];
-  if (shortcut.ctrlKey) modifiers.push("Ctrl");
-  if (shortcut.altKey) modifiers.push("Alt");
-  if (shortcut.shiftKey) modifiers.push("Shift");
-  if (shortcut.metaKey) modifiers.push("Meta");
-  const keyLabel = arrowSymbols[shortcut.key] || shortcut.key.toUpperCase();
-  return [...modifiers, keyLabel].join(" + ");
+  return arrowSymbols[shortcut.key] || shortcut.key.toUpperCase();
 }

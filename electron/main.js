@@ -87,11 +87,10 @@ function startRawInputWorker() {
     }
     if (event?.type !== "keydown") return;
 
-    const matchedShortcut = observedShortcuts.find((item) => event.code === item.shortcut.code
-      && event.ctrlKey === item.shortcut.ctrlKey
-      && event.altKey === item.shortcut.altKey
-      && event.shiftKey === item.shortcut.shiftKey
-      && event.metaKey === item.shortcut.metaKey);
+    // Shortcuts match on the physical key alone - any modifier held at the
+    // same time is ignored, so a timer bound to "A" restarts even if Ctrl is
+    // also held.
+    const matchedShortcut = observedShortcuts.find((item) => event.code === item.shortcut.code);
     if (matchedShortcut) mainWindow?.webContents.send("global-restart", matchedShortcut.id);
   });
 
