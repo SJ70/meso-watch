@@ -248,6 +248,17 @@ h1 {
   z-index: 1;
 }
 
+.global-controls {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.settings-toggle.global-action {
+  background: color-mix(in srgb, var(--card) calc(var(--panel-opacity) * 100%), transparent);
+}
+
 .timer-card-header {
   grid-column: 1 / -1;
 }
@@ -1467,6 +1478,36 @@ button:disabled {
 
 .timer-manage-modal {
   width: min(100% - 32px, 380px);
+}
+
+.timer-preset-bar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.timer-preset-button {
+  padding: 7px 8px;
+  color: var(--muted);
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.timer-preset-button:hover,
+.timer-preset-button:focus-visible {
+  color: var(--ink);
+  background: #303b47;
+}
+
+.timer-preset-button.is-active {
+  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
 }
 
 /* Rows are a fixed height so this can cap at an exact row count (10) instead

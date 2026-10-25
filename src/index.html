@@ -63,6 +63,12 @@
         <button class="settings-toggle close-button" id="closeButton" type="button" aria-label="닫기"></button>
       </div>
     </header>
+    <div class="global-controls" aria-label="전체 타이머 제어">
+      <button class="settings-toggle global-action" id="startAllButton" type="button" aria-label="전체 시작"></button>
+      <button class="settings-toggle global-action" id="pauseAllButton" type="button" aria-label="전체 일시정지"></button>
+      <button class="settings-toggle global-action" id="resetAllButton" type="button" aria-label="전체 정지"></button>
+      <button class="settings-toggle global-action" id="restartAllButton" type="button" aria-label="전체 재시작"></button>
+    </div>
     <section class="timer-list" id="timerList" aria-label="등록된 타이머"></section>
   </main>
 
@@ -81,6 +87,7 @@
     <div class="settings-modal-header">
       <span class="section-title">타이머 설정</span>
     </div>
+    <div class="timer-preset-bar" id="timerPresetBar" aria-label="프리셋"></div>
     <div class="timer-manage-list" id="timerManageList" aria-label="타이머 목록"></div>
     <button class="timer-manage-add" id="timerManageAddButton" type="button">
       <span>타이머 추가</span>
@@ -162,6 +169,15 @@
         <span class="setting-value" id="timersPerRowValue"></span>
       </div>
       <input class="opacity-slider" id="timersPerRowSlider" type="range" min="1" max="6" step="1" aria-label="행 당 타이머 수" />
+    </div>
+    <div class="toggle-setting">
+      <div class="opacity-setting-header">
+        <span class="control-label">전체 제어 버튼 표시</span>
+        <label class="toggle-switch">
+          <input id="showGlobalControlsCheckbox" type="checkbox" aria-label="전체 제어 버튼 표시" />
+          <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        </label>
+      </div>
     </div>
     <div class="settings-actions">
       <button class="secondary" id="screenSettingsCancelButton" type="button">취소</button>

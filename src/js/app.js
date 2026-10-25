@@ -11,6 +11,8 @@ import {
   DEFAULT_UI_ZOOM,
   MIN_UI_ZOOM,
   MAX_UI_ZOOM,
+  DEFAULT_SHOW_GLOBAL_CONTROLS,
+  TIMER_PRESET_COUNT,
   ALARM_TYPES,
   DEFAULT_ALARM_TYPE,
   MIN_ALARM_REPEAT_COUNT,
@@ -43,6 +45,7 @@ const timerManageList = document.getElementById("timerManageList");
 const timerManageAddButton = document.getElementById("timerManageAddButton");
 const timerManageCloseButton = document.getElementById("timerManageCloseButton");
 timerManageAddButton.prepend(createIconElement("alarm-clock-plus", { width: 16, height: 16 }));
+const timerPresetBar = document.getElementById("timerPresetBar");
 registerDialogShrinkOnClose(timerManageDialog);
 
 fetch("../package.json")
@@ -66,6 +69,20 @@ if (window.electronAPI) {
   closeButton.appendChild(createIconElement("x", { width: 18, height: 18 }));
   closeButton.addEventListener("click", () => window.close());
 }
+
+const globalControls = document.querySelector(".global-controls");
+const startAllButton = document.getElementById("startAllButton");
+const pauseAllButton = document.getElementById("pauseAllButton");
+const resetAllButton = document.getElementById("resetAllButton");
+const restartAllButton = document.getElementById("restartAllButton");
+startAllButton.appendChild(createIconElement("play", { width: 18, height: 18 }));
+pauseAllButton.appendChild(createIconElement("pause", { width: 18, height: 18 }));
+resetAllButton.appendChild(createIconElement("square", { width: 18, height: 18 }));
+restartAllButton.appendChild(createIconElement("rotate-ccw-clock", { width: 18, height: 18 }));
+startAllButton.addEventListener("click", () => timers.forEach((timer) => startTimer(timer)));
+pauseAllButton.addEventListener("click", () => timers.forEach((timer) => stopTimer(timer)));
+resetAllButton.addEventListener("click", () => timers.forEach((timer) => resetTimer(timer)));
+restartAllButton.addEventListener("click", () => timers.forEach((timer) => restartTimer(timer)));
 
 function loadOpacity(key, fallback) {
   const raw = localStorage.getItem(key);
@@ -158,6 +175,32 @@ function revertUiZoom() {
   updateUiZoomUi();
 }
 
+function loadShowGlobalControls() {
+  const raw = localStorage.getItem("meso-watch-show-global-controls");
+  return raw === null ? DEFAULT_SHOW_GLOBAL_CONTROLS : raw === "true";
+}
+
+let showGlobalControls = loadShowGlobalControls();
+let committedShowGlobalControls = showGlobalControls;
+
+function applyShowGlobalControls() {
+  globalControls.style.display = showGlobalControls ? "" : "none";
+}
+
+function saveShowGlobalControls() {
+  localStorage.setItem("meso-watch-show-global-controls", String(showGlobalControls));
+  committedShowGlobalControls = showGlobalControls;
+  applyShowGlobalControls();
+  syncWindowToContent();
+}
+
+function revertShowGlobalControls() {
+  showGlobalControls = committedShowGlobalControls;
+  showGlobalControlsCheckbox.checked = showGlobalControls;
+}
+
+applyShowGlobalControls();
+
 configureWindowSizeState(() => ({ timerCount: timers.length, timersPerRow, uiZoom }));
 
 const screenSettingsButton = document.getElementById("screenSettingsButton");
@@ -172,40 +215,50 @@ const timersPerRowSlider = document.getElementById("timersPerRowSlider");
 const timersPerRowValue = document.getElementById("timersPerRowValue");
 const uiZoomSlider = document.getElementById("uiZoomSlider");
 const uiZoomValue = document.getElementById("uiZoomValue");
+const showGlobalControlsCheckbox = document.getElementById("showGlobalControlsCheckbox");
 screenSettingsButton.appendChild(createIconElement("settings", { width: 18, height: 18 }));
 bgOpacitySlider.value = bgOpacity;
 panelOpacitySlider.value = panelOpacity;
 previewOpacity();
 updateTimersPerRowUi();
 updateUiZoomUi();
+showGlobalControlsCheckbox.checked = showGlobalControls;
 registerDialogShrinkOnClose(screenSettingsDialog);
 screenSettingsButton.addEventListener("click", () => {
   committedBgOpacity = bgOpacity;
   committedPanelOpacity = panelOpacity;
   committedTimersPerRow = timersPerRow;
   committedUiZoom = uiZoom;
+  committedShowGlobalControls = showGlobalControls;
   bgOpacitySlider.value = bgOpacity;
   panelOpacitySlider.value = panelOpacity;
   updateTimersPerRowUi();
   updateUiZoomUi();
+  showGlobalControlsCheckbox.checked = showGlobalControls;
   openDialog(screenSettingsDialog);
 });
 screenSettingsConfirmButton.addEventListener("click", () => {
   saveOpacity();
   saveTimersPerRow();
   saveUiZoom();
+  saveShowGlobalControls();
   screenSettingsDialog.close();
 });
 screenSettingsCancelButton.addEventListener("click", () => {
   revertOpacity();
   revertTimersPerRow();
   revertUiZoom();
+  revertShowGlobalControls();
   screenSettingsDialog.close();
 });
 screenSettingsDialog.addEventListener("cancel", () => {
   revertOpacity();
   revertTimersPerRow();
   revertUiZoom();
+  revertShowGlobalControls();
+});
+showGlobalControlsCheckbox.addEventListener("change", (event) => {
+  showGlobalControls = event.target.checked;
 });
 bgOpacitySlider.addEventListener("input", (event) => {
   bgOpacity = Math.min(100, Math.max(0, Number(event.target.value)));
@@ -522,11 +575,57 @@ function loadTimerIds() {
 
 function saveTimerIds() {
   localStorage.setItem("meso-watch-timer-ids", JSON.stringify(timers.map((timer) => timer.id)));
+  saveActivePreset();
+}
+
+// Presets are fixed slots (프리셋 1-3) that each remember the timers' order
+// and enabled state - enabled state lives only here, not per timer. Whichever
+// slot is active follows every reorder/toggle (saveTimerIds/setTimerEnabled
+// write through to it), so switching slots never needs a separate save step.
+// A slot with no data, or a timer missing from a slot's data, counts as
+// enabled and falls back to id (= creation) order after the slot's own.
+function loadActivePresetIndex() {
+  const raw = Number(localStorage.getItem("meso-watch-active-preset"));
+  return Number.isInteger(raw) && raw >= 0 && raw < TIMER_PRESET_COUNT ? raw : 0;
+}
+
+let activePresetIndex = loadActivePresetIndex();
+
+function loadPreset(index) {
+  try {
+    const raw = JSON.parse(localStorage.getItem(`meso-watch-preset-${index}`) || "null");
+    return Array.isArray(raw) ? raw.filter((entry) => Number.isInteger(entry?.id)) : null;
+  } catch (error) {
+    return null;
+  }
+}
+
+function saveActivePreset() {
+  const entries = timers.map((timer) => ({ id: timer.id, enabled: timer.enabled }));
+  localStorage.setItem(`meso-watch-preset-${activePresetIndex}`, JSON.stringify(entries));
+}
+
+function orderTimersByActivePreset() {
+  const entries = loadPreset(activePresetIndex) ?? [];
+  const entryById = new Map(entries.map((entry) => [entry.id, entry]));
+  const known = entries.map((entry) => timers.find((timer) => timer.id === entry.id)).filter(Boolean);
+  const unknown = timers.filter((timer) => !entryById.has(timer.id)).sort((a, b) => a.id - b.id);
+  timers = [...known, ...unknown];
+  timers.forEach((timer) => { timer.enabled = entryById.get(timer.id)?.enabled ?? true; });
+}
+
+function applyPreset(index) {
+  activePresetIndex = index;
+  localStorage.setItem("meso-watch-active-preset", String(index));
+  orderTimersByActivePreset();
+  saveTimerIds();
+  renderAllTimers();
+  renderTimerManageList();
+  updatePresetButtons();
 }
 
 function loadTimerEnabled(id) {
-  const raw = localStorage.getItem(`meso-watch-timer-${id}-enabled`);
-  return raw === null ? true : raw === "true";
+  return loadPreset(activePresetIndex)?.find((entry) => entry.id === id)?.enabled ?? true;
 }
 
 function isTimerEnabled(timerId) {
@@ -535,7 +634,7 @@ function isTimerEnabled(timerId) {
 
 function setTimerEnabled(timer, enabled) {
   timer.enabled = enabled;
-  localStorage.setItem(`meso-watch-timer-${timer.id}-enabled`, String(enabled));
+  saveActivePreset();
 }
 
 function loadTimerIcon(id) {
@@ -1187,9 +1286,13 @@ function renderTimer(timer, target = timerList) {
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", String(timer.id));
   });
+  // Saves on dragend rather than drop: drop only fires when released over a
+  // card, but the live dragover swaps have already reordered `timers` by then.
   element.addEventListener("dragend", () => {
     element.classList.remove("is-dragging");
     draggedTimer = null;
+    saveTimerIds();
+    renderTimerManageList();
   });
   element.addEventListener("dragover", (event) => {
     event.preventDefault();
@@ -1221,11 +1324,7 @@ function renderTimer(timer, target = timerList) {
       timerList.insertBefore(draggedElement, referenceElement);
     });
   });
-  element.addEventListener("drop", (event) => {
-    event.preventDefault();
-    saveTimerIds();
-    renderTimerManageList();
-  });
+  element.addEventListener("drop", (event) => event.preventDefault());
   element.querySelector(".settings-toggle").addEventListener("click", () => {
     resetDraftFromTimer();
     openDialog(settingsModal);
@@ -1602,9 +1701,12 @@ function renderTimerManageList() {
       event.dataTransfer.effectAllowed = "move";
       event.dataTransfer.setData("text/plain", String(timer.id));
     });
+    // Saves on dragend for the same reason as the main list's cards.
     row.addEventListener("dragend", () => {
       row.classList.remove("is-dragging");
       draggedManageTimerId = null;
+      saveTimerIds();
+      renderAllTimers();
     });
     // Swaps live as the dragged row crosses into this one (see the main
     // timer list's own dragover handler above, which this mirrors) rather
@@ -1634,11 +1736,7 @@ function renderTimerManageList() {
         timerManageList.insertBefore(draggedRow, referenceRow);
       });
     });
-    row.addEventListener("drop", (event) => {
-      event.preventDefault();
-      saveTimerIds();
-      renderAllTimers();
-    });
+    row.addEventListener("drop", (event) => event.preventDefault());
     timerManageList.appendChild(row);
   });
   // Rows are a fixed height (see .timer-manage-row/-list in index.css), so
@@ -1646,6 +1744,28 @@ function renderTimerManageList() {
   // measure scrollHeight (which would read 0 before the dialog is shown).
   timerManageList.classList.toggle("has-scroll", timers.length > TIMER_MANAGE_VISIBLE_ROWS);
 }
+
+const presetButtons = Array.from({ length: TIMER_PRESET_COUNT }, (_, index) => {
+  const button = document.createElement("button");
+  button.className = "timer-preset-button";
+  button.type = "button";
+  button.textContent = `프리셋 ${index + 1}`;
+  button.addEventListener("click", () => {
+    if (index !== activePresetIndex) applyPreset(index);
+  });
+  timerPresetBar.appendChild(button);
+  return button;
+});
+
+function updatePresetButtons() {
+  presetButtons.forEach((button, index) => {
+    const active = index === activePresetIndex;
+    button.classList.toggle("is-active", active);
+    button.setAttribute("aria-pressed", String(active));
+  });
+}
+
+updatePresetButtons();
 
 timerManageButton.addEventListener("click", () => {
   renderTimerManageList();
@@ -1842,7 +1962,6 @@ function removeTimer(timer) {
   localStorage.removeItem(`meso-watch-timer-${timer.id}-alarm-repeat-unlimited`);
   localStorage.removeItem(`meso-watch-timer-${timer.id}-auto-restart`);
   localStorage.removeItem(`meso-watch-timer-${timer.id}-restart-delay`);
-  localStorage.removeItem(`meso-watch-timer-${timer.id}-enabled`);
   removeTimerProgressStyle(timer.id);
   removeTimerColor(timer.id);
   timers = timers.filter((item) => item !== timer);
@@ -1937,6 +2056,7 @@ if (initialTimerIds.length > 0) {
   timers = seedDefaultTimersIfNeeded();
   saveTimerIds();
 }
+orderTimersByActivePreset();
 renderAllTimers();
 saveShortcuts();
 syncWindowToContent();
