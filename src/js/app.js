@@ -618,6 +618,7 @@ function applyPreset(index) {
   activePresetIndex = index;
   localStorage.setItem("meso-watch-active-preset", String(index));
   orderTimersByActivePreset();
+  timers.forEach((timer) => { if (!timer.enabled) resetTimer(timer); });
   saveTimerIds();
   renderAllTimers();
   renderTimerManageList();
@@ -632,8 +633,11 @@ function isTimerEnabled(timerId) {
   return timers.find((timer) => timer.id === timerId)?.enabled ?? true;
 }
 
+// A disabled timer is hidden, so it's stopped (same as its 정지 button) rather
+// than left counting down or ringing out of sight.
 function setTimerEnabled(timer, enabled) {
   timer.enabled = enabled;
+  if (!enabled) resetTimer(timer);
   saveActivePreset();
 }
 
