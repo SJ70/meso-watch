@@ -1979,7 +1979,14 @@ function confirmDeleteTimer(timer) {
   openDialog(confirmDialog);
 }
 
+// Shortcuts are ignored while any dialog is open, so pressing a timer's key
+// while editing doesn't restart it behind the dialog.
+function isEditingSettings() {
+  return document.querySelector("dialog[open]") !== null;
+}
+
 function restartTimerById(timerId) {
+  if (isEditingSettings()) return;
   const timer = timers.find((item) => item.id === timerId);
   if (timer) restartTimer(timer);
 }
@@ -2028,7 +2035,7 @@ window.addEventListener("keydown", (event) => {
     return;
   }
 
-  if (window.electronAPI || event.repeat) return;
+  if (window.electronAPI || event.repeat || isEditingSettings()) return;
   timers.forEach((timer) => {
     const shortcut = timer.shortcut;
     if (!shortcut) return;
