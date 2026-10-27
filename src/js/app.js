@@ -1992,7 +1992,7 @@ function isEditingSettings() {
 function restartTimerById(timerId) {
   if (isEditingSettings()) return;
   const timer = timers.find((item) => item.id === timerId);
-  if (timer) restartTimer(timer);
+  if (timer?.enabled) restartTimer(timer);
 }
 
 function cancelShortcutRecording() {
@@ -2042,7 +2042,7 @@ window.addEventListener("keydown", (event) => {
   if (window.electronAPI || event.repeat || isEditingSettings()) return;
   timers.forEach((timer) => {
     const shortcut = timer.shortcut;
-    if (!shortcut) return;
+    if (!shortcut || !timer.enabled) return;
     if (event.key.toLowerCase() === shortcut.key) restartTimer(timer);
   });
 });
