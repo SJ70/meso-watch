@@ -79,10 +79,12 @@ startAllButton.appendChild(createIconElement("play", { width: 18, height: 18 }))
 pauseAllButton.appendChild(createIconElement("pause", { width: 18, height: 18 }));
 resetAllButton.appendChild(createIconElement("square", { width: 18, height: 18 }));
 restartAllButton.appendChild(createIconElement("rotate-ccw-clock", { width: 18, height: 18 }));
-startAllButton.addEventListener("click", () => timers.forEach((timer) => startTimer(timer)));
-pauseAllButton.addEventListener("click", () => timers.forEach((timer) => stopTimer(timer)));
-resetAllButton.addEventListener("click", () => timers.forEach((timer) => resetTimer(timer)));
-restartAllButton.addEventListener("click", () => timers.forEach((timer) => restartTimer(timer)));
+// Global controls only act on enabled timers - disabled ones stay stopped.
+const enabledTimers = () => timers.filter((timer) => timer.enabled);
+startAllButton.addEventListener("click", () => enabledTimers().forEach((timer) => startTimer(timer)));
+pauseAllButton.addEventListener("click", () => enabledTimers().forEach((timer) => stopTimer(timer)));
+resetAllButton.addEventListener("click", () => enabledTimers().forEach((timer) => resetTimer(timer)));
+restartAllButton.addEventListener("click", () => enabledTimers().forEach((timer) => restartTimer(timer)));
 
 function loadOpacity(key, fallback) {
   const raw = localStorage.getItem(key);
