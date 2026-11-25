@@ -9,7 +9,8 @@
 //! `file://` page there - Chromium itself reads the data back - and posts it
 //! to the `mwlegacy` protocol below. The main window then starts on
 //! legacy-import.html, which writes it into the app's own storage. The
-//! Electron profile is only ever read, never modified.
+//! Electron profile is only read during the import, then deleted once the
+//! import has succeeded (`legacy_finish`).
 
 use std::{
     fs, io,
@@ -196,6 +197,13 @@ pub fn legacy_finish(app: AppHandle) -> Result<(), String> {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
     fs::write(&marker, "").map_err(|e| e.to_string())?;
+    // The data now lives in this app's own storage, so the Electron
+    // profile (settings plus ~15 MB of Chromium caches and spellcheck
+    // dictionaries) is no longer needed. Best effort: anything still
+    // locked is simply left behind.
+    if let Some(electron) = electron_user_data_dir() {
+        let _ = fs::remove_dir_all(electron);
+    }
     if let Some(profile) = profile_path(&app) {
         // May still be locked by the just-closed export webview's browser
         // process; start() retries on the next launch.
