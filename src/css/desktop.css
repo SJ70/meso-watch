@@ -4,7 +4,9 @@ html {
 
 body {
   min-height: 0;
-  -webkit-app-region: drag;
+  /* Empty areas drag the frameless window (see js/desktop-api.js), so
+     keep a drag from selecting text on the way. */
+  user-select: none;
 }
 
 main {
@@ -30,7 +32,7 @@ header {
   display: none;
 }
 
-.electron-version-tag {
+.desktop-version-tag {
   display: inline-block;
   align-self: flex-end;
   margin-right: auto;
@@ -39,12 +41,6 @@ header {
   font-size: 0.7rem;
 }
 
-.header-actions,
-.global-controls,
-.timer-card,
-.settings-modal {
-  -webkit-app-region: no-drag;
-}
 
 .close-button,
 .minimize-button {

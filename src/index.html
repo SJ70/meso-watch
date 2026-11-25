@@ -16,21 +16,22 @@
   <link rel="stylesheet" href="css/color.css" />
   <link rel="stylesheet" href="css/index.css" />
   <link rel="stylesheet" href="css/timer-progress.css" />
+  <script src="js/desktop-api.js"></script>
   <script src="js/opacity-defaults.js"></script>
   <script>
-    if (window.electronAPI) {
-      const electronStylesheet = document.createElement("link");
-      electronStylesheet.rel = "stylesheet";
-      electronStylesheet.href = "css/electron.css";
-      document.head.appendChild(electronStylesheet);
+    if (window.desktopAPI) {
+      const desktopStylesheet = document.createElement("link");
+      desktopStylesheet.rel = "stylesheet";
+      desktopStylesheet.href = "css/desktop.css";
+      document.head.appendChild(desktopStylesheet);
 
       const defaults = window.mesoWatchOpacityDefaults;
       const rawBgOpacity = localStorage.getItem("meso-watch-bg-opacity");
       const rawPanelOpacity = localStorage.getItem("meso-watch-panel-opacity");
       const storedBgOpacity = rawBgOpacity === null ? NaN : Number(rawBgOpacity);
       const storedPanelOpacity = rawPanelOpacity === null ? NaN : Number(rawPanelOpacity);
-      const bgOpacity = Number.isFinite(storedBgOpacity) && storedBgOpacity >= 0 && storedBgOpacity <= 100 ? storedBgOpacity : defaults.bgOpacityElectron;
-      const panelOpacity = Number.isFinite(storedPanelOpacity) && storedPanelOpacity >= 0 && storedPanelOpacity <= 100 ? storedPanelOpacity : defaults.panelOpacityElectron;
+      const bgOpacity = Number.isFinite(storedBgOpacity) && storedBgOpacity >= 0 && storedBgOpacity <= 100 ? storedBgOpacity : defaults.bgOpacityDesktop;
+      const panelOpacity = Number.isFinite(storedPanelOpacity) && storedPanelOpacity >= 0 && storedPanelOpacity <= 100 ? storedPanelOpacity : defaults.panelOpacityDesktop;
       document.documentElement.style.setProperty("--bg-opacity", bgOpacity / 100);
       document.documentElement.style.setProperty("--panel-opacity", panelOpacity / 100);
 
@@ -55,7 +56,7 @@
           <p class="subtitle">메이플스토리 재획 타이머</p>
         </div>
       </div>
-      <span class="electron-version-tag" id="electronVersionTag"></span>
+      <span class="desktop-version-tag" id="desktopVersionTag"></span>
       <div class="header-actions">
         <button class="settings-toggle timer-manage-button" id="timerManageButton" type="button" aria-label="타이머 설정"></button>
         <button class="settings-toggle screen-settings-button" id="screenSettingsButton" type="button" aria-label="설정"></button>

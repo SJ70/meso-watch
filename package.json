@@ -3,56 +3,19 @@
   "version": "1.3.1",
   "private": true,
   "license": "GPL-3.0",
-  "main": "electron/main.js",
   "repository": {
     "type": "git",
     "url": "https://github.com/SJ70/meso-watch.git"
   },
   "scripts": {
-    "start": "electron .",
-    "dev": "electron .",
-    "build": "electron-builder",
-    "release": "dotenv -e .env -- electron-builder --publish always",
+    "start": "tauri dev",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "release": "dotenv -e .env -- node scripts/release.js",
     "postversion": "node scripts/delete-version-tag.js"
   },
   "devDependencies": {
-    "dotenv-cli": "^11.0.0",
-    "electron": "^38.8.6",
-    "electron-builder": "^26.15.3"
-  },
-  "build": {
-    "appId": "com.mesowatch.app",
-    "productName": "메소워치",
-    "executableName": "meso-watch",
-    "npmRebuild": false,
-    "files": [
-      "electron/**/*",
-      "src/**/*",
-      "public/**/*"
-    ],
-    "win": {
-      "target": [
-        "nsis",
-        "portable"
-      ],
-      "icon": "public/logo.png",
-      "requestedExecutionLevel": "requireAdministrator"
-    },
-    "nsis": {
-      "differentialPackage": false,
-      "artifactName": "meso-watch ${version} setup.${ext}"
-    },
-    "portable": {
-      "artifactName": "meso-watch ${version} portable.${ext}"
-    },
-    "releaseInfo": {
-      "releaseNotesFile": "build/release-notes.md"
-    },
-    "publish": {
-      "provider": "github"
-    }
-  },
-  "dependencies": {
-    "koffi": "^3.2.1"
+    "@tauri-apps/cli": "^2.12.6",
+    "dotenv-cli": "^11.0.0"
   }
 }

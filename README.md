@@ -68,8 +68,8 @@
 ## 기술 스택
 
 - **프론트엔드** ![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=black) ![HTML5](https://img.shields.io/badge/HTML5-E34F26?logo=html5&logoColor=white) ![CSS3](https://img.shields.io/badge/CSS3-1572B6?logo=css3&logoColor=white)
-- **데스크톱 런타임** ![Electron](https://img.shields.io/badge/Electron-47848F?logo=electron&logoColor=white)
-- **패키징** ![electron-builder](https://img.shields.io/badge/electron--builder-2B2E3A)
+- **데스크톱 런타임** ![Tauri](https://img.shields.io/badge/Tauri-24C8DB?logo=tauri&logoColor=white) ![Rust](https://img.shields.io/badge/Rust-000000?logo=rust&logoColor=white)
+- **패키징** ![NSIS](https://img.shields.io/badge/NSIS-2B2E3A)
 - **입력 감지** ![Windows](https://img.shields.io/badge/Raw_Input_API-0078D6?logo=windows&logoColor=white)
 - **패키지 매니저** ![npm](https://img.shields.io/badge/npm-CB3837?logo=npm&logoColor=white)
 

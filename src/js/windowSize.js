@@ -1,6 +1,6 @@
-// Single entry point for keeping the Electron window's outer size in sync
+// Single entry point for keeping the desktop window's outer size in sync
 // with the app's content. Width and height are always sent together in one
-// IPC call (see electron/main.js's resize-window handler) so a width-driven
+// IPC call (see src-tauri/src/main.rs's resize-window handler) so a width-driven
 // change (timers-per-row, zoom) can never race a height-driven one (dialog
 // open/close) and clobber it with a stale value - the previous split
 // resize-to-content/resize-width calls could do exactly that.
@@ -18,7 +18,7 @@ export function configureWindowSizeState(stateGetter) {
   getState = stateGetter;
 }
 
-// CSS-effective width (pre-zoom) the timer grid should have. Electron's
+// CSS-effective width (pre-zoom) the timer grid should have. The webview's
 // `zoom` on <html> already rescales measured heights into physical px on its
 // own (see below), so only the width sent to the main process needs the
 // explicit uiZoom multiplier.
@@ -30,7 +30,7 @@ function computeBaseWidth() {
 
 // The timer grid's columns come from CSS auto-fill, driven by the window's
 // *current* width - not by timersPerRow directly. Measuring body height at
-// the current width (e.g. the hardcoded width Electron creates the window
+// the current width (e.g. the hardcoded width the app creates the window
 // with at startup) can therefore catch the grid at a different column/row
 // count than the width we're about to resize to. Temporarily pinning body's
 // width to the target width forces the grid to lay out at its final column
@@ -50,14 +50,14 @@ let lastSent = null;
 // resizing, so callers that need the new size in place before doing anything
 // else (e.g. opening a dialog without it flashing at the old size) can await it.
 function sendResize(width, height) {
-  if (!window.electronAPI) return Promise.resolve();
+  if (!window.desktopAPI) return Promise.resolve();
   const rounded = { width: Math.round(width), height: Math.max(MIN_WINDOW_HEIGHT, Math.ceil(height)) };
   // The resize itself can nudge the next measured height by a pixel or two
   // (rounding, the main-process +1px repaint nudge); ignore requests that
   // don't differ meaningfully from the last one actually sent.
   if (lastSent && Math.abs(rounded.width - lastSent.width) <= 2 && Math.abs(rounded.height - lastSent.height) <= 2) return Promise.resolve();
   lastSent = rounded;
-  return window.electronAPI.resizeWindow(rounded.width, rounded.height);
+  return window.desktopAPI.resizeWindow(rounded.width, rounded.height);
 }
 
 // Fits the window to the main timer list. Call after anything that changes

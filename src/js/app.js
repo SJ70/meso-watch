@@ -52,7 +52,7 @@ fetch("../package.json")
   .then((response) => response.json())
   .then((data) => {
     document.getElementById("versionTag").textContent = `v ${data.version}`;
-    document.getElementById("electronVersionTag").textContent = `v ${data.version}`;
+    document.getElementById("desktopVersionTag").textContent = `v ${data.version}`;
     checkForUpdate(data.version).then((update) => {
       if (!update) return;
       pendingUpdateUrl = update.url;
@@ -63,11 +63,11 @@ fetch("../package.json")
 
 const minimizeButton = document.getElementById("minimizeButton");
 const closeButton = document.getElementById("closeButton");
-if (window.electronAPI) {
+if (window.desktopAPI) {
   minimizeButton.appendChild(createIconElement("minus", { width: 18, height: 18 }));
-  minimizeButton.addEventListener("click", () => window.electronAPI.minimizeWindow());
+  minimizeButton.addEventListener("click", () => window.desktopAPI.minimizeWindow());
   closeButton.appendChild(createIconElement("x", { width: 18, height: 18 }));
-  closeButton.addEventListener("click", () => window.close());
+  closeButton.addEventListener("click", () => window.desktopAPI.closeWindow());
 }
 
 const globalControls = document.querySelector(".global-controls");
@@ -94,8 +94,8 @@ function loadOpacity(key, fallback) {
 }
 
 const opacityDefaults = window.mesoWatchOpacityDefaults;
-let bgOpacity = loadOpacity("meso-watch-bg-opacity", window.electronAPI ? opacityDefaults.bgOpacityElectron : opacityDefaults.bgOpacityWeb);
-let panelOpacity = loadOpacity("meso-watch-panel-opacity", window.electronAPI ? opacityDefaults.panelOpacityElectron : opacityDefaults.panelOpacityWeb);
+let bgOpacity = loadOpacity("meso-watch-bg-opacity", window.desktopAPI ? opacityDefaults.bgOpacityDesktop : opacityDefaults.bgOpacityWeb);
+let panelOpacity = loadOpacity("meso-watch-panel-opacity", window.desktopAPI ? opacityDefaults.panelOpacityDesktop : opacityDefaults.panelOpacityWeb);
 let committedBgOpacity = bgOpacity;
 let committedPanelOpacity = panelOpacity;
 
@@ -471,7 +471,7 @@ function loadShortcut(timerId) {
 
 function saveShortcuts() {
   timers.forEach((timer) => localStorage.setItem(`meso-watch-timer-${timer.id}-shortcut`, JSON.stringify(timer.shortcut)));
-  window.electronAPI?.setGlobalShortcuts(timers.filter((timer) => timer.shortcut).map((timer) => ({ id: timer.id, shortcut: timer.shortcut })));
+  window.desktopAPI?.setGlobalShortcuts(timers.filter((timer) => timer.shortcut).map((timer) => ({ id: timer.id, shortcut: timer.shortcut })));
 }
 
 // mm:ss, growing to h:mm:ss only once a timer is an hour or longer.
@@ -2010,7 +2010,7 @@ function cancelShortcutRecording() {
 // Korean keyboards' right Alt/Ctrl double as IME toggles (한/영, 한자).
 // Chromium reports pressing them with the toggle's own key name, even though
 // the user physically pressed Alt/Ctrl. Raw Input (used to actually trigger
-// shortcuts in Electron) reads the real hardware key and reports an ordinary
+// shortcuts in the desktop app) reads the real hardware key and reports an ordinary
 // Alt/Ctrl press instead, so recording has to correct for the mismatch here
 // or the shortcut can never match. The web build has no Raw Input trigger
 // path - both recording and triggering see the same browser-level value
@@ -2028,8 +2028,8 @@ window.addEventListener("keydown", (event) => {
     event.preventDefault();
     const shortcutButton = recordingElement.querySelector(".shortcut-button");
     const lowerKey = event.key.toLowerCase();
-    const code = window.electronAPI ? (NORMALIZE_MODIFIER_CODE[event.code] || event.code) : event.code;
-    const imeOverride = window.electronAPI ? IME_MODIFIER_OVERRIDE[lowerKey] : null;
+    const code = window.desktopAPI ? (NORMALIZE_MODIFIER_CODE[event.code] || event.code) : event.code;
+    const imeOverride = window.desktopAPI ? IME_MODIFIER_OVERRIDE[lowerKey] : null;
     recordingDraft.shortcut = event.key === "Escape"
       ? null
       : imeOverride || { key: lowerKey, code };
@@ -2041,7 +2041,7 @@ window.addEventListener("keydown", (event) => {
     return;
   }
 
-  if (window.electronAPI || event.repeat || isEditingSettings()) return;
+  if (window.desktopAPI || event.repeat || isEditingSettings()) return;
   timers.forEach((timer) => {
     const shortcut = timer.shortcut;
     if (!shortcut || !timer.enabled) return;
@@ -2074,4 +2074,4 @@ renderAllTimers();
 saveShortcuts();
 syncWindowToContent();
 
-window.electronAPI?.onGlobalRestart(restartTimerById);
+window.desktopAPI?.onGlobalRestart(restartTimerById);

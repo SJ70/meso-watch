@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<!--
+  Runs as a file:// page in a hidden webview whose profile holds a copy of
+  the Electron build's storage, so it sees that data under the same origin
+  the Electron app wrote it with. Reads everything and posts it to the Tauri
+  app (see src-tauri/src/legacy.rs). Binary values (Blob/File, ArrayBuffer,
+  typed arrays) and Dates are tagged so legacy-import.html can rebuild them.
+-->
+<html>
+<head><meta charset="UTF-8" /></head>
+<body>
+<script>
+  const ENDPOINT = "http://mwlegacy.localhost";
+
+  function bytesToBase64(bytes) {
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    }
+    return btoa(binary);
+  }
+
+  async function encode(value) {
+    if (value instanceof Blob) {
+      const encoded = { __mwLegacy: value instanceof File ? "file" : "blob", type: value.type, data: bytesToBase64(new Uint8Array(await value.arrayBuffer())) };
+      if (value instanceof File) Object.assign(encoded, { name: value.name, lastModified: value.lastModified });
+      return encoded;
+    }
+    if (value instanceof ArrayBuffer) return { __mwLegacy: "arraybuffer", data: bytesToBase64(new Uint8Array(value)) };
+    if (ArrayBuffer.isView(value)) {
+      const bytes = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+      return { __mwLegacy: "typedarray", ctor: value.constructor.name, data: bytesToBase64(bytes) };
+    }
+    if (value instanceof Date) return { __mwLegacy: "date", value: value.getTime() };
+    if (Array.isArray(value)) return Promise.all(value.map(encode));
+    if (value && typeof value === "object") {
+      const out = {};
+      for (const [key, entry] of Object.entries(value)) out[key] = await encode(entry);
+      return out;
+    }
+    return value;
+  }
+
+  function result(request) {
+    return new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async function exportDatabase(name) {
+    const db = await result(indexedDB.open(name));
+    try {
+      const stores = [];
+      for (const storeName of db.objectStoreNames) {
+        const store = db.transaction(storeName, "readonly").objectStore(storeName);
+        const [keys, values] = await Promise.all([result(store.getAllKeys()), result(store.getAll())]);
+        const indexes = [...store.indexNames].map((indexName) => {
+          const index = store.index(indexName);
+          return { name: index.name, keyPath: index.keyPath, unique: index.unique, multiEntry: index.multiEntry };
+        });
+        const records = [];
+        for (let i = 0; i < values.length; i++) records.push({ key: await encode(keys[i]), value: await encode(values[i]) });
+        stores.push({ name: storeName, keyPath: store.keyPath, autoIncrement: store.autoIncrement, indexes, records });
+      }
+      return { name, version: db.version, stores };
+    } finally {
+      db.close();
+    }
+  }
+
+  async function run() {
+    const localStorageEntries = {};
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      localStorageEntries[key] = localStorage.getItem(key);
+    }
+    const databases = [];
+    for (const { name } of await indexedDB.databases()) {
+      if (name) databases.push(await exportDatabase(name));
+    }
+    return { localStorage: localStorageEntries, indexedDB: databases };
+  }
+
+  run()
+    .then((data) => fetch(`${ENDPOINT}/export`, { method: "POST", body: JSON.stringify(data) }))
+    .catch((error) => fetch(`${ENDPOINT}/error`, { method: "POST", body: String(error?.stack || error) }));
+</script>
+</body>
+</html>

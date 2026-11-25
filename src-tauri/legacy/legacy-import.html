@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<!--
+  First page the main window opens after an Electron -> Tauri upgrade when
+  there's legacy data to bring over (see src-tauri/src/legacy.rs). Writes
+  what legacy-export.html read into this app's own localStorage/IndexedDB,
+  then continues to the real app. Skipped entirely if this install already
+  has its own data, so nothing the user set up in the Tauri app gets
+  overwritten.
+-->
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>html, body { background: transparent; }</style>
+</head>
+<body>
+<script>
+  const { invoke } = window.__TAURI__.core;
+
+  function base64ToBytes(base64) {
+    const binary = atob(base64);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return bytes;
+  }
+
+  function decode(value) {
+    if (Array.isArray(value)) return value.map(decode);
+    if (!value || typeof value !== "object") return value;
+    switch (value.__mwLegacy) {
+      case "file": return new File([base64ToBytes(value.data)], value.name, { type: value.type, lastModified: value.lastModified });
+      case "blob": return new Blob([base64ToBytes(value.data)], { type: value.type });
+      case "arraybuffer": return base64ToBytes(value.data).buffer;
+      case "typedarray": {
+        const Ctor = globalThis[value.ctor] || Uint8Array;
+        const buffer = base64ToBytes(value.data).buffer;
+        return new Ctor(buffer, 0, buffer.byteLength / (Ctor.BYTES_PER_ELEMENT || 1));
+      }
+      case "date": return new Date(value.value);
+      default: {
+        const out = {};
+        for (const [key, entry] of Object.entries(value)) out[key] = decode(entry);
+        return out;
+      }
+    }
+  }
+
+  function result(request) {
+    return new Promise((resolve, reject) => {
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async function importDatabase({ name, version, stores }) {
+    const request = indexedDB.open(name, version);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      for (const store of stores) {
+        if (db.objectStoreNames.contains(store.name)) continue;
+        const created = db.createObjectStore(store.name, { keyPath: store.keyPath, autoIncrement: store.autoIncrement });
+        for (const index of store.indexes) created.createIndex(index.name, index.keyPath, { unique: index.unique, multiEntry: index.multiEntry });
+      }
+    };
+    const db = await result(request);
+    try {
+      for (const store of stores) {
+        const transaction = db.transaction(store.name, "readwrite");
+        const objectStore = transaction.objectStore(store.name);
+        for (const { key, value } of store.records) {
+          if (store.keyPath === null) objectStore.put(decode(value), decode(key));
+          else objectStore.put(decode(value));
+        }
+        await new Promise((resolve, reject) => {
+          transaction.oncomplete = resolve;
+          transaction.onerror = () => reject(transaction.error);
+          transaction.onabort = () => reject(transaction.error);
+        });
+      }
+    } finally {
+      db.close();
+    }
+  }
+
+  function hasOwnData() {
+    for (let i = 0; i < localStorage.length; i++) {
+      if (localStorage.key(i)?.startsWith("meso-watch-")) return true;
+    }
+    return false;
+  }
+
+  // IndexedDB goes first (put() is idempotent) and localStorage last, so a
+  // failure part-way leaves localStorage empty and the next launch retries
+  // the whole import; legacy_finish is only reached on success.
+  async function run() {
+    const raw = await invoke("legacy_take");
+    if (raw && !hasOwnData()) {
+      const data = JSON.parse(raw);
+      for (const database of data.indexedDB || []) await importDatabase(database);
+      for (const [key, value] of Object.entries(data.localStorage || {})) localStorage.setItem(key, value);
+    }
+    await invoke("legacy_finish");
+  }
+
+  run()
+    .catch((error) => console.error("legacy import failed:", error))
+    .finally(() => location.replace("src/index.html"));
+</script>
+</body>
+</html>

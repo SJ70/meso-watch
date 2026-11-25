@@ -1,5 +1,5 @@
-// Electron's raw-input capture treats left/right Ctrl/Alt/Shift as the same key
-// (see electron/rawInputDaemon.js); normalize recorded codes to match, so a
+// The desktop app's raw-input capture treats left/right Ctrl/Alt/Shift as the same key
+// (see src-tauri/src/raw_input.rs); normalize recorded codes to match, so a
 // shortcut set with either side still triggers. The web build has no such
 // capture and is left alone.
 export const NORMALIZE_MODIFIER_CODE = {

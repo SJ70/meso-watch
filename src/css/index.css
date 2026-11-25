@@ -89,7 +89,7 @@ header {
   margin-bottom: 10px;
 }
 
-.electron-version-tag {
+.desktop-version-tag {
   display: none;
 }
 
@@ -1247,7 +1247,7 @@ button:disabled {
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
 }
 
-/* electron.css hides scrollbars everywhere; the dropdown needs one so it's
+/* desktop.css hides scrollbars everywhere; the dropdown needs one so it's
    obvious more options are below the first 5. */
 .icon-select-options::-webkit-scrollbar {
   display: block;

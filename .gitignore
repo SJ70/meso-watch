@@ -1,9 +1,11 @@
 # Node dependencies
 node_modules/
 
-# Electron build output
+# Build output
 /dist/
-/release/
+/dist-app/
+/src-tauri/target/
+/src-tauri/gen/
 
 # Local environment files
 .env

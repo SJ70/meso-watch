@@ -84,10 +84,10 @@ const MIN_VISIBLE_OPTIONS = 3;
 // it fits (the default), flipped above it when that side has more room, and
 // shortened to the available space when neither side fits the whole list.
 // Without this, a dropdown near the bottom of the settings dialog overflows
-// the Electron overlay's window and makes it scroll.
+// the desktop overlay's window and makes it scroll.
 //
 // Everything is measured in viewport px (getBoundingClientRect, innerHeight)
-// because electron.css zooms <html>; max-height is written back in CSS px, so
+// because desktop.css zooms <html>; max-height is written back in CSS px, so
 // the measured list height is divided out as the zoom scale first.
 function positionOptionList(trigger, optionList) {
   optionList.classList.remove("is-above");
